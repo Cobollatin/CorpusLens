@@ -38,7 +38,7 @@ public class Phase3Tests
         try
         {
             var chunks = Enumerable.Range(0, 50_001).Select(i => new SearchChunk(i.ToString("D6"), "r", "SingleVerse", "a", Hashes.Sha256("a"), [])).ToArray();
-            var shards = new BatchJsonlBuilder().Build("r", chunks, dir);
+            var shards = new BatchJsonlBuilder().Build("r", chunks.Append(chunks[0]), dir);
             Assert.Equal(2, shards.Count);
             Assert.Equal(49_999, shards[0].Requests);
             Assert.Equal(2, shards[1].Requests);

@@ -29,7 +29,7 @@ public sealed class BatchJsonlBuilder
             if (path is not null) shards.Add(new BatchShard(path, count, bytes, tokens, Cost(tokens)));
             path = null; count = 0; bytes = 0; tokens = 0;
         }
-        foreach (var chunk in chunks.OrderBy(c => c.Id, StringComparer.Ordinal))
+        foreach (var chunk in chunks.DistinctBy(c => c.Id).OrderBy(c => c.Id, StringComparer.Ordinal))
         {
             if (chunk.RevisionId != revisionId || Hashes.Sha256(chunk.EmbeddingInput) != chunk.InputSha256) throw new InvalidDataException("Invalid chunk revision or checksum.");
             var line = JsonSerializer.Serialize(new { custom_id = revisionId + ":" + chunk.Id, method = "POST", url = "/v1/embeddings",

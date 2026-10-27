@@ -39,13 +39,16 @@ if (args.Length > 0 && args[0] == "batch-export")
     var revision = snapshot.Audit.RevisionId;
     var shards = new BatchJsonlBuilder().Build(revision, snapshot.Chunks, Path.Combine(root, "data", "batch", args[2]));
     var manifestPath = Path.Combine(root, "data", "manifests", "nwt-audit-manifest.json");
-    using var manifestDoc = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath));
-    var manifest = System.Text.Json.Nodes.JsonNode.Parse(manifestDoc.RootElement.GetRawText())!.AsObject();
-    manifest[args[2]]!["batch"] = JsonSerializer.SerializeToNode(new { shardCount = shards.Count, requestCount = shards.Sum(s => s.Requests),
-        estimatedTokens = shards.Sum(s => s.EstimatedTokens), estimatedCostUsd = shards.Sum(s => s.EstimatedCostUsd),
-        estimator = "ceil(UTF-8 input bytes / 4) per request; planning estimate, not tokenizer or billed usage",
-        shards = shards.Select(s => new { requests = s.Requests, bytes = s.Bytes, estimatedTokens = s.EstimatedTokens, estimatedCostUsd = s.EstimatedCostUsd }).ToArray() });
-    await File.WriteAllTextAsync(manifestPath, manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    if (File.Exists(manifestPath))
+    {
+        using var manifestDoc = JsonDocument.Parse(await File.ReadAllTextAsync(manifestPath));
+        var manifest = System.Text.Json.Nodes.JsonNode.Parse(manifestDoc.RootElement.GetRawText())!.AsObject();
+        manifest[args[2]]!["batch"] = JsonSerializer.SerializeToNode(new { shardCount = shards.Count, requestCount = shards.Sum(s => s.Requests),
+            estimatedTokens = shards.Sum(s => s.EstimatedTokens), estimatedCostUsd = shards.Sum(s => s.EstimatedCostUsd),
+            estimator = "ceil(UTF-8 input bytes / 4) per request; planning estimate, not tokenizer or billed usage",
+            shards = shards.Select(s => new { requests = s.Requests, bytes = s.Bytes, estimatedTokens = s.EstimatedTokens, estimatedCostUsd = s.EstimatedCostUsd }).ToArray() });
+        await File.WriteAllTextAsync(manifestPath, manifest.ToJsonString(new JsonSerializerOptions { WriteIndented = true }));
+    }
     Console.WriteLine($"{args[2]}: {shards.Count} shards, {shards.Sum(s => s.Requests)} requests, {shards.Sum(s => s.EstimatedTokens)} estimated tokens, ${shards.Sum(s => s.EstimatedCostUsd):F4}");
     return;
 }
