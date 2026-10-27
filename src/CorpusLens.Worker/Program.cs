@@ -145,6 +145,35 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-can
     }
 }
 
+if (args.Length > 0 && args[0] == "direct-backfill")
+{
+    if (args.Length != 3 || args[1] != "--lang" || args[2] is not ("E" or "S")) throw new ArgumentException("Use direct-backfill --lang E|S.");
+    var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
+    await DirectBackfill.RunAsync(args[2], root, SnapshotDirectory(root));
+    return;
+}
+
+if (args.Length > 0 && args[0] == "phase6-verify")
+{
+    if (args.Length != 1 || Environment.GetEnvironmentVariable("CORPUSLENS_ALLOW_ORACLE_CONNECT") != "yes") throw new ArgumentException("Use phase6-verify with authorized Oracle access.");
+    var options = OracleDatabaseOptions.FromEnvironment();
+    await using var connection = new OracleConnection(options.ConnectionString);
+    await connection.OpenAsync();
+    await using (var counts = connection.CreateCommand())
+    {
+        counts.CommandText = "SELECT s.language,COUNT(c.id),COUNT(e.chunk_id) FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id LEFT JOIN chunk_embedding e ON e.chunk_id=c.id WHERE r.status='Active' GROUP BY s.language ORDER BY s.language";
+        await using var reader = await counts.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) Console.WriteLine($"{reader.GetString(0)}: {Convert.ToInt64(reader.GetValue(2))} embeddings / {Convert.ToInt64(reader.GetValue(1))} chunks");
+    }
+    await using (var indexes = connection.CreateCommand())
+    {
+        indexes.CommandText = "SELECT index_name,index_type,status FROM user_indexes WHERE table_name='CHUNK_EMBEDDING' ORDER BY index_name";
+        await using var reader = await indexes.ExecuteReaderAsync();
+        while (await reader.ReadAsync()) Console.WriteLine($"{reader.GetString(0)}: {reader.GetString(1)} {reader.GetString(2)}");
+    }
+    return;
+}
+
 if (args.Length > 0 && args[0] == "snapshot")
 {
     var languages = new List<string>();
