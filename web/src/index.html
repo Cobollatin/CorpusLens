@@ -8,6 +8,7 @@
   <link rel="icon" type="image/x-icon" href="favicon.ico">
   <script src="config.js"></script>
   <script>try { const saved = localStorage.getItem('corpuslens-theme'); document.documentElement.dataset.theme = saved === 'dark' || saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; } catch { document.documentElement.dataset.theme = 'light'; }</script>
+  <style>:root[data-theme=dark]{color-scheme:dark;--bg:#101b1a;--surface:#1b2a28;--input:#14211f;--chip:#253734;--text:#ecf4ef;--muted:#afc2b8;--border:#3a514b;--link:#a6e4cc;--accent:#a6e4cc;--accent-text:#10251e;--highlight:#3b3424;--number:#f0c881;--shadow:#0005;--error-bg:#4b2828;--error-text:#ffd6ce}</style>
 </head>
 <body>
   <app-root></app-root>
