@@ -26,6 +26,8 @@ try {
     }
     ssh -i $key $remote 'tar -xf /tmp/corpuslens.tar -C /opt/corpuslens/app && rm /tmp/corpuslens.tar'
     if ($LASTEXITCODE -ne 0) { throw 'Remote extraction failed.' }
+    ssh -i $key $remote 'test -f /opt/corpuslens/.env && ln -sfn /opt/corpuslens/.env /opt/corpuslens/app/deploy/oci/.env'
+    if ($LASTEXITCODE -ne 0) { throw 'External deployment environment is missing.' }
     $run = @'
 set -e
 cd /opt/corpuslens/app/deploy/oci
@@ -44,6 +46,7 @@ done
 docker compose -f docker-compose.oci.yml up -d
 '@
     $run = $run.Replace('__DOMAIN__', $Domain)
+    $run = $run.Replace("`r`n", "`n")
     $run | ssh -i $key $remote 'bash -s'
     if ($LASTEXITCODE -ne 0) { throw 'Remote build, migration, seed, or startup failed.' }
     Write-Host "Deployment commands completed for api.$Domain."

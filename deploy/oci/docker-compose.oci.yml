@@ -15,6 +15,7 @@ services:
       Corpus__StatePath: /app/state
       CORPUSLENS_REPOSITORY_ROOT: /app
       Cors__AllowedOrigins__0: ${VERCEL_ORIGIN:?Set exact Vercel origin}
+      Cors__AllowedOrigins__1: https://corpuslens.vercel.app
     volumes:
       - ${SNAPSHOT_PATH:?Set snapshot directory}:/app/snapshots:ro
       - api_state:/app/state
