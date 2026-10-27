@@ -121,8 +121,8 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
                         var nodeId = revisionId + ":verse:" + verse.SpanId;
                         await Insert("INSERT INTO document_node(id,document_id,parent_id,kind,native_id) VALUES(:id,:document,:parent,'verse',:native)",
                             ("id", nodeId), ("document", documentId), ("parent", chapterId), ("native", verse.SpanId));
-                        await Insert("INSERT INTO text_span(id,node_id,raw_text,sha256,source_locator) VALUES(:id,:node,:raw,:sha,:locator)",
-                            ("id", revisionId + ":" + verse.SpanId), ("node", nodeId), ("raw", verse.Text), ("sha", Hashes.Sha256(verse.Text)), ("locator", BibleLinks.ForVerse(verse.Book, verse.Chapter, verse.Number, snapshot.Language).Jw));
+                        await Insert("INSERT INTO text_span(id,node_id,raw_text,sha256,source_locator) VALUES(:id,:node,:raw_value,:sha,:locator)",
+                            ("id", revisionId + ":" + verse.SpanId), ("node", nodeId), ("raw_value", verse.Text), ("sha", Hashes.Sha256(verse.Text)), ("locator", BibleLinks.ForVerse(verse.Book, verse.Chapter, verse.Number, snapshot.Language).Jw));
                     }
                 }
             }
@@ -130,11 +130,11 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
             foreach (var chunk in snapshot.Chunks)
             {
                 var raw = string.Join(" ", chunk.Segments.Select(s => spans[s.TextSpanId].Text[s.Start..s.End]));
-                await Insert("INSERT INTO search_chunk(id,revision_id,layer,raw_text,embedding_input,input_sha256,context_header) VALUES(:id,:revision,:layer,:raw,:input,:sha,:header)",
-                    ("id", chunk.Id), ("revision", revisionId), ("layer", chunk.Layer), ("raw", raw), ("input", chunk.EmbeddingInput), ("sha", chunk.InputSha256), ("header", chunk.ContextHeader ?? (object)DBNull.Value));
+                await Insert("INSERT INTO search_chunk(id,revision_id,layer,raw_text,embedding_input,input_sha256,context_header) VALUES(:id,:revision,:layer,:raw_value,:input,:sha,:header)",
+                    ("id", chunk.Id), ("revision", revisionId), ("layer", chunk.Layer), ("raw_value", raw), ("input", chunk.EmbeddingInput), ("sha", chunk.InputSha256), ("header", chunk.ContextHeader ?? (object)DBNull.Value));
                 foreach (var segment in chunk.Segments)
-                    await Insert("INSERT INTO chunk_segment(chunk_id,text_span_id,start_offset,end_offset) VALUES(:chunk,:span,:start,:end)",
-                        ("chunk", chunk.Id), ("span", revisionId + ":" + segment.TextSpanId), ("start", segment.Start), ("end", segment.End));
+                    await Insert("INSERT INTO chunk_segment(chunk_id,text_span_id,start_offset,end_offset) VALUES(:chunk,:span,:start_offset,:end)",
+                        ("chunk", chunk.Id), ("span", revisionId + ":" + segment.TextSpanId), ("start_offset", segment.Start), ("end", segment.End));
             }
             await Insert("INSERT INTO coverage_audit(revision_id,passed,report_json) VALUES(:revision,1,:report)",
                 ("revision", revisionId), ("report", System.Text.Json.JsonSerializer.Serialize(snapshot.Audit)));

@@ -17,7 +17,7 @@ $archive = Join-Path ([IO.Path]::GetTempPath()) ("corpuslens-" + [guid]::NewGuid
 try {
     git -C $repo archive --format=tar -o $archive HEAD
     if ($LASTEXITCODE -ne 0) { throw 'git archive failed.' }
-    ssh -i $key $remote 'sudo mkdir -p /opt/corpuslens/app /opt/corpuslens/snapshots /opt/corpuslens/wallet && sudo chown -R $USER:$USER /opt/corpuslens'
+    ssh -i $key $remote 'sudo mkdir -p /opt/corpuslens/app /opt/corpuslens/snapshots /opt/corpuslens/wallet && sudo chown -R "$USER:$USER" /opt/corpuslens/app /opt/corpuslens/snapshots'
     if ($LASTEXITCODE -ne 0) { throw 'Remote directory creation failed.' }
     scp -i $key $archive "${remote}:/tmp/corpuslens.tar"
     if ($LASTEXITCODE -ne 0) { throw 'Source copy failed.' }
