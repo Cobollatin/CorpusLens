@@ -45,6 +45,31 @@ public class Phase4Tests
         Assert.Single(result);
         Assert.Equal(ReciprocalRankFusion.Score(hit, new()).Total, result[0].Score, 10);
     }
+    [Fact] public void TransitiveOverlapDisplaysFocusedSection()
+    {
+        var verses = Enumerable.Range(1, 34).ToDictionary(n => BibleVerseId.Format(40, 6, n), n => new Verse(40, 6, n, $"Verse {n}", "Matthew", BibleVerseId.Format(40, 6, n)));
+        var ids = Enumerable.Range(1, 34).Select(n => BibleVerseId.Format(40, 6, n)).ToArray();
+        var hits = new[]
+        {
+            new SearchCandidate("focus", "SingleVerse", [ids[24]], null, null, 1, null),
+            new SearchCandidate("section", "PericopeSection", ids[24..], null, null, 2, null),
+            new SearchCandidate("bridge", "PericopeSection", ids, null, null, 3, null)
+        };
+        var result = new PassageDeduplicator().Build(hits, verses, [], "E", new(), null, 10);
+        Assert.Equal("Matthew 6:25-34", Assert.Single(result).Reference);
+        Assert.True(result[0].Verses.Count <= 10);
+    }
+    [Fact] public void CitationRemainsFocusedAfterChapterMerge()
+    {
+        var verses = Enumerable.Range(1, 36).ToDictionary(n => BibleVerseId.Format(43, 3, n), n => new Verse(43, 3, n, $"Verse {n}", "John", BibleVerseId.Format(43, 3, n)));
+        var ids = verses.Keys.ToArray();
+        var result = new PassageDeduplicator().Build([
+            new SearchCandidate("chapter", "PericopeSection", ids, null, null, 1, null),
+            new SearchCandidate("citation", "SingleVerse", [BibleVerseId.Format(43, 3, 16)], null, null, null, 1)
+        ], verses, [], "E", new(), new Citation(43, 3, 16, 16, "John"), 10);
+        Assert.Equal("John 3:15-17", result[0].Reference);
+        Assert.Equal(16, Assert.Single(result[0].Verses.Where(v => v.IsPrimaryHighlight)).Number);
+    }
     [Fact] public void CacheKeyUsesNormalizationAndLanguage()
     {
         var normalizer = new QueryNormalizer();

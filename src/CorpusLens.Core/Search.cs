@@ -37,10 +37,11 @@ public static class ReciprocalRankFusion
 {
     public static (double Total, double Dense, double Lexical) Score(SearchCandidate candidate, HybridSearchOptions options)
     {
-        if (candidate.PrecomputedTotal is double total) return (total, candidate.PrecomputedDense ?? 0, candidate.PrecomputedLexical ?? 0);
+        if (candidate.PrecomputedTotal is double total) return (total * (candidate.Layer == "PericopeSection" ? 0.85 : 1), candidate.PrecomputedDense ?? 0, candidate.PrecomputedLexical ?? 0);
         var dense = candidate.DenseRank is > 0 ? options.VectorWeight / (options.RrfK + candidate.DenseRank.Value) : 0;
         var lexical = candidate.LexicalRank is > 0 ? options.LexicalWeight / (options.RrfK + candidate.LexicalRank.Value) : 0;
-        return ((dense + lexical) * (candidate.Layer == "SingleVerse" ? 1 + options.LayerBoost : 1), dense, lexical);
+        var layerWeight = candidate.Layer == "SingleVerse" ? 1 + options.LayerBoost : candidate.Layer == "PericopeSection" ? 0.85 : 1;
+        return ((dense + lexical) * layerWeight, dense, lexical);
     }
 }
 
@@ -70,17 +71,32 @@ public sealed class PassageDeduplicator
         return groups.Select(group =>
         {
             var all = group.SelectMany(g => g.VerseIds).Where(verses.ContainsKey).Distinct().Order().ToArray();
-            var first = verses[all[0]]; var last = verses[all[^1]];
+            var strongest = group.Where(g => g.Layer != "PericopeSection").DefaultIfEmpty(group[0])
+                .OrderByDescending(g => ReciprocalRankFusion.Score(g, options).Total).First();
+            var focus = strongest.VerseIds.Where(verses.ContainsKey).Select(id => verses[id].Number).Order().ToArray();
+            var center = focus[focus.Length / 2];
+            var sectionChunk = group.Where(g => g.Layer == "PericopeSection" && g.VerseIds.Any(id => verses.TryGetValue(id, out var v) && v.Number == center))
+                .Select(g => g.VerseIds.Where(verses.ContainsKey).Select(id => verses[id].Number).Order().ToArray())
+                .Where(ids => ids.Length is > 0 and <= 10).OrderBy(ids => ids.Length).FirstOrDefault();
+            var pericope = pericopes.Where(p => p.Book == verses[all[0]].Book && p.Chapter == verses[all[0]].Chapter && p.StartVerse <= center && p.EndVerse >= center)
+                .Where(p => p.EndVerse - p.StartVerse < 10).OrderBy(p => p.EndVerse - p.StartVerse).FirstOrDefault();
+            var start = sectionChunk is not null ? sectionChunk[0] : pericope?.StartVerse ?? Math.Max(1, center - 4);
+            var end = sectionChunk is not null ? sectionChunk[^1] : pericope?.EndVerse ?? start + 9;
+            if (citation is not null && citation.Book == verses[all[0]].Book && citation.Chapter == verses[all[0]].Chapter && citation.VerseIds.Intersect(all).Any())
+            { start = Math.Max(1, citation.StartVerse - 1); end = Math.Min(citation.EndVerse + 1, start + 9); }
+            var available = all.Select(id => verses[id]).ToArray();
+            var first = available.FirstOrDefault(v => v.Number >= start) ?? available[0];
+            var last = available.LastOrDefault(v => v.Number <= end) ?? available[^1];
             var scores = group.Select(c => ReciprocalRankFusion.Score(c, options)).ToArray();
             var anchors = citation is not null && citation.Book == first.Book && citation.Chapter == first.Chapter
-                ? citation.VerseIds.Intersect(all).ToHashSet() : group.Where(g => g.Layer == "SingleVerse").OrderByDescending(g => ReciprocalRankFusion.Score(g, options).Total).Take(1).SelectMany(g => g.VerseIds).ToHashSet();
-            if (anchors.Count == 0) anchors.Add(all[0]);
+                ? citation.VerseIds.Intersect(all).ToHashSet() : group.Where(g => g.Layer == "SingleVerse" && g.VerseIds.Any(id => verses.TryGetValue(id, out var v) && v.Number >= first.Number && v.Number <= last.Number)).OrderByDescending(g => ReciprocalRankFusion.Score(g, options).Total).Take(1).SelectMany(g => g.VerseIds).ToHashSet();
+            if (anchors.Count == 0) anchors.Add(BibleVerseId.Format(first.Book, first.Chapter, center));
             var passage = Enumerable.Range(first.Number, last.Number - first.Number + 1).Select(n => BibleVerseId.Format(first.Book, first.Chapter, n)).Where(verses.ContainsKey).Select(id =>
             {
                 var v = verses[id]; var links = BibleLinks.ForVerse(v.Book, v.Chapter, v.Number, language);
                 return new PassageVerse(id, v.Number, v.Text, anchors.Contains(id), links.Jw, links.Wol);
             }).ToArray();
-            var section = pericopes.LastOrDefault(p => p.Book == first.Book && p.Chapter == first.Chapter && p.StartVerse <= first.Number && p.EndVerse >= first.Number)?.Heading;
+            var section = pericopes.LastOrDefault(p => p.Book == first.Book && p.Chapter == first.Chapter && p.StartVerse <= center && p.EndVerse >= center)?.Heading;
             var reference = $"{first.BookName} {first.Chapter}:{first.Number}" + (last.Number != first.Number ? $"-{last.Number}" : "");
             var boost = citation is not null && citation.VerseIds.Intersect(all).Any() ? 1.0 : 0;
             // Overlapping chunks describe the same passage; summing them rewards chunk count over relevance.

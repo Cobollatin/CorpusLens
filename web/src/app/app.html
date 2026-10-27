@@ -1,11 +1,12 @@
 <main class="shell">
   <header class="masthead">
     <a class="brand" href="/en">CorpusLens</a>
-    <nav class="languages" aria-label="Language"><a href="/en" [attr.aria-current]="language === 'E' ? 'page' : null">EN</a><span>|</span><a href="/es" [attr.aria-current]="language === 'S' ? 'page' : null">ES</a></nav>
+    <div class="header-actions"><nav class="languages" aria-label="Language"><a href="/en" [attr.aria-current]="language === 'E' ? 'page' : null">EN</a><span>|</span><a href="/es" [attr.aria-current]="language === 'S' ? 'page' : null">ES</a></nav><button class="theme-toggle" type="button" (click)="toggleTheme()" [attr.aria-label]="t.theme" [attr.title]="t.theme">{{ dark ? '☀' : '☾' }}</button></div>
   </header>
   <form class="search-panel" (ngSubmit)="search()">
     <label class="visually-hidden" for="query">{{ t.label }}</label>
     <div class="search-row"><input id="query" name="query" [(ngModel)]="query" type="search" [placeholder]="t.placeholder" maxlength="500"><button type="submit" [disabled]="loading || !query.trim()">{{ loading ? t.searching : t.search }}</button></div>
+    <div class="examples"><button type="button" *ngFor="let example of t.examples" (click)="searchExample(example)">{{ example }}</button></div>
   </form>
   <p class="error" *ngIf="error">{{ error }}</p>
   <section class="results" *ngIf="response" aria-live="polite">
