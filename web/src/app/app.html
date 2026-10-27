@@ -1,8 +1,18 @@
 <main class="shell">
-  <header><p class="eyebrow">CorpusLens · Phase 1</p><h1>Explore the corpus</h1><p>Multilingual search is being prepared. Search indexing will be available in a later phase.</p></header>
-  <form (submit)="$event.preventDefault()">
-    <label for="query">Search text</label>
-    <div class="search"><input id="query" type="search" placeholder="Enter a word, phrase, or question" disabled><button type="submit" disabled>Search</button></div>
+  <header class="masthead"><div class="brand">Corpus<span>Lens</span></div><span class="edition">Scripture search · English / Español</span></header>
+  <section class="hero"><p class="eyebrow">Search across the text</p><h1>Find the passage<br><em>you remember.</em></h1><p>Explore the Bible by words, meaning, or reference. Every result leads back to its verse.</p></section>
+  <form class="search-panel" (ngSubmit)="search()">
+    <div class="controls"><label>Corpus<select name="language" [(ngModel)]="language"><option value="E">English NWT</option><option value="S">Español TNM</option><option value="All">All</option></select></label><label>Mode<select name="mode" [(ngModel)]="mode"><option>Hybrid</option><option>Semantic</option><option>Lexical</option></select></label></div>
+    <label class="query-label" for="query">Search query</label><div class="search-row"><input id="query" name="query" [(ngModel)]="query" type="search" placeholder="Try John 3:16 or ask a question" maxlength="500"><button type="submit" [disabled]="loading || !query.trim()">{{ loading ? 'Searching…' : 'Search' }}</button></div>
+    <div class="citation" *ngIf="citationBadge">↳ {{ citationBadge }}</div>
   </form>
-  <p class="notice">No corpus has been indexed yet.</p>
+  <div class="samples"><span>Try a search</span><button type="button" *ngFor="let sample of samples" (click)="choose(sample)">{{ sample }}</button></div>
+  <div class="status" *ngIf="response"><span>{{ response.coverageStatus }}</span><span>{{ response.degradedToLexicalOnly ? 'Lexical only · embeddings unavailable or spend guard active' : response.cacheState }}</span></div>
+  <p class="error" *ngIf="error">{{ error }}</p>
+  <section class="results" *ngIf="response"><div class="result-heading"><h2>Passages</h2><span>{{ response.results.length }} results · {{ response.mode }}</span></div><p *ngIf="!response.results.length">No matching passages found. Try a different phrase or reference.</p>
+    <article class="card" *ngFor="let result of response.results"><div class="card-top"><div><span class="reference">{{ result.reference }}</span><span class="section" *ngIf="result.section">{{ result.section }}</span></div><span class="layers">{{ result.layers.join(' · ') }}</span></div>
+      <div class="verse" *ngFor="let verse of result.verses" [class.primary]="verse.isPrimaryHighlight"><span class="number">{{ verse.number }}</span><p>{{ verse.text }}</p><div class="links"><a *ngIf="verse.jwLink" [href]="verse.jwLink" target="_blank" rel="noopener noreferrer">JW.org ↗</a><a *ngIf="verse.wolLink" [href]="verse.wolLink" target="_blank" rel="noopener noreferrer">WOL ↗</a></div></div>
+      <footer>Score {{ result.score | number:'1.3-3' }} <span>Vector {{ result.denseRrf | number:'1.3-3' }} · Text {{ result.lexicalRrf | number:'1.3-3' }}</span></footer>
+    </article>
+  </section>
 </main>

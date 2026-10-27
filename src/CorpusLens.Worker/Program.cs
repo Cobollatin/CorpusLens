@@ -6,6 +6,34 @@ using System.Text.Json;
 using CorpusLens.Infrastructure.Persistence;
 using Oracle.ManagedDataAccess.Client;
 
+if (args.Length > 0 && args[0] == "eval")
+{
+    var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
+    var cases = await EvaluationRunner.LoadAsync(Path.Combine(root, "data", "eval", "bible-eval-100.json"));
+    var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
+    var corpus = new LocalSnapshotSearchCorpus(root);
+    var normalizer = new QueryNormalizer();
+    var search = new HybridSearchService(corpus, normalizer, new CitationQueryParser(),
+        new CachedQueryEmbeddingService(normalizer, new QueryVectorCache(), new NullQueryEmbeddingCacheRepository(),
+            new OpenAiQueryEmbedder(new OpenAiEmbeddingClient(new HttpClient(), config)), new OpenAiSpendGuard(), config),
+        new NoOpReranker(), new PassageDeduplicator(), new HybridSearchOptions());
+    var rows = new List<(EvalCase Case, IReadOnlyList<string> RankedIds)>();
+    foreach (var item in cases)
+    {
+        var response = await search.SearchAsync(new SearchQuery(item.Query, item.Language, null, 10, "Lexical"));
+        rows.Add((item, response.Results.SelectMany(r => r.Verses.Select(v => v.Id)).Distinct().ToArray()));
+    }
+    Console.WriteLine("LEXICAL-ONLY BASELINE (local snapshots; no embeddings or provider calls)");
+    foreach (var group in rows.GroupBy(r => (r.Case.Language, r.Case.Category)).OrderBy(g => g.Key.Language).ThenBy(g => g.Key.Category))
+    {
+        var metric = EvaluationRunner.Compute(group);
+        Console.WriteLine($"{group.Key.Language,-3} {group.Key.Category,-18} n={metric.Count,2} R@5={metric.RecallAt5:F3} R@10={metric.RecallAt10:F3} MRR@10={metric.MrrAt10:F3} nDCG@10={metric.NdcgAt10:F3}");
+    }
+    var total = EvaluationRunner.Compute(rows);
+    Console.WriteLine($"ALL n={total.Count} R@5={total.RecallAt5:F3} R@10={total.RecallAt10:F3} MRR@10={total.MrrAt10:F3} nDCG@10={total.NdcgAt10:F3}");
+    return;
+}
+
 if (args.Length > 0 && args[0] is "schema-migrate" or "revision-stage")
 {
     if (Environment.GetEnvironmentVariable("CORPUSLENS_ALLOW_ORACLE_CONNECT") != "yes")

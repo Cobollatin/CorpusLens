@@ -83,6 +83,6 @@ public interface ICorpusSourceAdapter
 public interface IChunkingPipeline { IReadOnlyList<SearchChunk> Build(string revisionId, IReadOnlyList<Verse> verses, IReadOnlyList<Pericope> pericopes); }
 public interface ICoverageAuditor { CoverageAuditReport Audit(string revisionId, IReadOnlyList<TextSpan> spans, IReadOnlyList<SearchChunk> chunks); }
 public record SearchRequest(string Query, string Language, string? Edition, int Limit = 10);
-public record SearchHit(string ChunkId, string Text, double Score, IReadOnlyList<string> VerseIds);
+public record SearchHit(string ChunkId, string Text, double Score, IReadOnlyList<string> VerseIds, string Layer = "unknown", string Language = "E", double DenseRrf = 0, double LexicalRrf = 0);
 public interface ISearchRepository { Task<IReadOnlyList<SearchHit>> SearchAsync(SearchRequest request, float[]? queryVector, CancellationToken cancellationToken); }
 public interface IVectorStore { Task UpsertAsync(IReadOnlyList<ChunkEmbedding> embeddings, CancellationToken cancellationToken); Task<float[]?> GetQueryVectorAsync(string key, CancellationToken cancellationToken); }

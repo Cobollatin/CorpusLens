@@ -37,6 +37,18 @@ public static class InfrastructureServices
         services.AddHttpClient<OpenAiEmbeddingClient>();
         services.AddSingleton<QueryVectorCache>();
         services.AddSingleton<QueryNormalizer>();
+        services.AddSingleton<CitationQueryParser>();
+        services.AddSingleton<PassageDeduplicator>();
+        services.AddSingleton<IReranker, NoOpReranker>();
+        services.AddSingleton(new HybridSearchOptions(config.GetValue("Search:VectorWeight", 1.0), config.GetValue("Search:LexicalWeight", 1.0), config.GetValue("Search:LayerBoost", .05)));
+        services.AddSingleton(_ => new OpenAiSpendGuard { LedgerPath = Path.Combine(NwtEpubCorpusAdapter.FindRepositoryRoot(), "data", "spend", "openai-queries.json") });
+        if (!string.IsNullOrWhiteSpace(connection)) services.AddSingleton<IQueryEmbeddingCacheRepository, OracleQueryEmbeddingCacheRepository>();
+        else services.AddSingleton<IQueryEmbeddingCacheRepository, NullQueryEmbeddingCacheRepository>();
+        services.AddSingleton<IQueryEmbedder, OpenAiQueryEmbedder>();
+        services.AddSingleton<CachedQueryEmbeddingService>();
+        if (!string.IsNullOrWhiteSpace(connection)) services.AddSingleton<ISearchCorpus, OracleSearchCorpus>();
+        else services.AddSingleton<ISearchCorpus>(_ => new LocalSnapshotSearchCorpus(NwtEpubCorpusAdapter.FindRepositoryRoot()));
+        services.AddSingleton<HybridSearchService>();
         services.AddHttpClient<ICorpusSourceAdapter, NwtEpubCorpusAdapter>();
         services.AddSingleton<IChunkingPipeline, InMemoryChunkingPipeline>();
         services.AddSingleton<ICoverageAuditor, CoverageAuditor>();

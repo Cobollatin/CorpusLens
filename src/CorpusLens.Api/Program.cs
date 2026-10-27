@@ -16,12 +16,13 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 app.UseCors("frontend");
 app.UseRateLimiter();
-app.MapGet("/api/v1/health", () => Results.Ok(new { status = "ok", phase = 1 }));
-app.MapGet("/api/v1/corpora", () => Results.Ok(Array.Empty<CorpusSource>()));
-app.MapPost("/api/v1/search", (SearchRequest request, QueryNormalizer normalizer) =>
+app.MapGet("/api/v1/health", (ISearchCorpus corpus) => Results.Ok(new { status = "ok", phase = 4, coverage = corpus.CoverageStatus }));
+app.MapGet("/api/v1/corpora", (ISearchCorpus corpus) => Results.Ok(new[] { new { language = "E", edition = "English NWT", available = corpus.Verses.ContainsKey("E:43003016") }, new { language = "S", edition = "Español TNM", available = corpus.Verses.ContainsKey("S:43003016") } }));
+app.MapGet("/api/v1/citations", (string query, CitationQueryParser parser) => Results.Ok(new { citation = parser.Parse(query) }));
+app.MapPost("/api/v1/search", async (SearchQuery request, HybridSearchService search, CancellationToken token) =>
 {
-    try { _ = normalizer.Normalize(request.Query, request.Language); }
+    try { return Results.Ok(await search.SearchAsync(request, token)); }
     catch (ArgumentException error) { return Results.BadRequest(new { error = error.Message }); }
-    return Results.Problem("Search indexing and Oracle retrieval are scheduled for later phases.", statusCode: 503);
 });
 app.Run();
+public partial class Program { }

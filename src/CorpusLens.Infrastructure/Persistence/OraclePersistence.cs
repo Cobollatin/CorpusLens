@@ -180,43 +180,64 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
     { var parameter = command.CreateParameter(); parameter.ParameterName = name; parameter.Value = value; command.Parameters.Add(parameter); }
 }
 
-public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory) : ISearchRepository
+public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory, HybridSearchOptions? options = null) : ISearchRepository
 {
+    public static string EscapeTextQuery(string query)
+    {
+        var terms = System.Text.RegularExpressions.Regex.Matches(query, @"[\p{L}\p{N}]+")
+            .Select(m => "{" + m.Value.Replace("}", "") + "}").Take(32).ToArray();
+        return terms.Length == 0 ? "{zzzzzzzz}" : string.Join(" OR ", terms);
+    }
     public async Task<IReadOnlyList<SearchHit>> SearchAsync(SearchRequest request, float[]? queryVector, CancellationToken cancellationToken)
     {
         await using var connection = connectionFactory();
         await connection.OpenAsync(cancellationToken);
         await using var command = connection.CreateCommand();
         if (command is OracleCommand oracleCommand) oracleCommand.BindByName = true;
-        // Both candidate branches use the same source and language filter; ranks are fused, not raw scores.
+        // Each branch is independently bounded and ranked under identical active-revision filters.
         command.CommandText = """
-            WITH text_hits AS (
-              SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC) rank_no
+            WITH text_ranked AS (
+              SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
               FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
-              WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
-              FETCH FIRST 100 ROWS ONLY
-            ), vector_hits AS (
-              SELECT c.id, ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(e.embedding,TO_VECTOR(:vector),COSINE)) rank_no
+              WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
+            ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50),
+            vector_ranked AS (
+              SELECT c.id, ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(e.embedding,TO_VECTOR(:vector),COSINE),c.id) rank_no
               FROM search_chunk c JOIN chunk_embedding e ON e.chunk_id=c.id
               JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
-              WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND :vector IS NOT NULL
-              FETCH FIRST 100 ROWS ONLY
-            ), fused AS (
-              SELECT id, SUM(score) fused_score FROM (
-                SELECT id, 1/(60+rank_no) score FROM text_hits UNION ALL
-                SELECT id, 1/(60+rank_no) score FROM vector_hits
+              WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND :vector IS NOT NULL
+            ), vector_hits AS (SELECT id,rank_no FROM vector_ranked WHERE rank_no<=50),
+            fused AS (
+              SELECT id,SUM(score) fused_score,SUM(CASE WHEN branch='dense' THEN score ELSE 0 END) dense_score,SUM(CASE WHEN branch='lexical' THEN score ELSE 0 END) lexical_score FROM (
+                SELECT id,:lexical_weight/(60+rank_no) score,'lexical' branch FROM text_hits UNION ALL
+                SELECT id,:vector_weight/(60+rank_no) score,'dense' branch FROM vector_hits
               ) GROUP BY id
-            ) SELECT c.id,c.raw_text,f.fused_score FROM fused f JOIN search_chunk c ON c.id=f.id
-            ORDER BY f.fused_score DESC FETCH FIRST :limit ROWS ONLY
+            ) SELECT c.id,c.raw_text,f.fused_score*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END),c.layer,s.language,f.dense_score,f.lexical_score
+            FROM fused f JOIN search_chunk c ON c.id=f.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
+            ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
             """;
         OracleCorpusRepository.Add(command, "language", request.Language);
         OracleCorpusRepository.Add(command, "edition", request.Edition is null ? DBNull.Value : request.Edition);
-        OracleCorpusRepository.Add(command, "query", request.Query);
+        OracleCorpusRepository.Add(command, "query", EscapeTextQuery(request.Query));
         OracleCorpusRepository.Add(command, "vector", queryVector is null ? DBNull.Value : "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]");
+        OracleCorpusRepository.Add(command, "lexical_weight", (options ?? new()).LexicalWeight);
+        OracleCorpusRepository.Add(command, "vector_weight", (options ?? new()).VectorWeight);
+        OracleCorpusRepository.Add(command, "layer_boost", (options ?? new()).LayerBoost);
         OracleCorpusRepository.Add(command, "limit", Math.Clamp(request.Limit, 1, 50));
         var hits = new List<SearchHit>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        while (await reader.ReadAsync(cancellationToken)) hits.Add(new SearchHit(reader.GetString(0), reader.GetString(1), Convert.ToDouble(reader.GetValue(2)), []));
+        while (await reader.ReadAsync(cancellationToken)) hits.Add(new SearchHit(reader.GetString(0), reader.GetString(1), Convert.ToDouble(reader.GetValue(2)), [], reader.GetString(3), reader.GetString(4), Convert.ToDouble(reader.GetValue(5)), Convert.ToDouble(reader.GetValue(6))));
+        await reader.DisposeAsync();
+        for (var i = 0; i < hits.Count; i++)
+        {
+            await using var segments = connection.CreateCommand();
+            segments.CommandText = "SELECT n.native_id FROM chunk_segment cs JOIN text_span t ON t.id=cs.text_span_id JOIN document_node n ON n.id=t.node_id WHERE cs.chunk_id=:id ORDER BY n.native_id";
+            OracleCorpusRepository.Add(segments, "id", hits[i].ChunkId);
+            var ids = new List<string>();
+            await using var segmentReader = await segments.ExecuteReaderAsync(cancellationToken);
+            while (await segmentReader.ReadAsync(cancellationToken)) ids.Add(segmentReader.GetString(0));
+            hits[i] = hits[i] with { VerseIds = ids };
+        }
         return hits;
     }
 }

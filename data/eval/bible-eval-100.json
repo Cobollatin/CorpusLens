@@ -1,0 +1,1228 @@
+[
+  {
+    "id": "E-001",
+    "language": "E",
+    "category": "citation",
+    "query": "John 3:16",
+    "expectedVerseIds": [
+      "43003016"
+    ]
+  },
+  {
+    "id": "S-001",
+    "language": "S",
+    "category": "citation",
+    "query": "Juan 3:16",
+    "expectedVerseIds": [
+      "43003016"
+    ]
+  },
+  {
+    "id": "E-002",
+    "language": "E",
+    "category": "citation",
+    "query": "Matthew 6:25-34",
+    "expectedVerseIds": [
+      "40006025",
+      "40006026",
+      "40006027",
+      "40006028",
+      "40006029",
+      "40006030",
+      "40006031",
+      "40006032",
+      "40006033",
+      "40006034"
+    ]
+  },
+  {
+    "id": "S-002",
+    "language": "S",
+    "category": "citation",
+    "query": "Mateo 6:25-34",
+    "expectedVerseIds": [
+      "40006025",
+      "40006026",
+      "40006027",
+      "40006028",
+      "40006029",
+      "40006030",
+      "40006031",
+      "40006032",
+      "40006033",
+      "40006034"
+    ]
+  },
+  {
+    "id": "E-003",
+    "language": "E",
+    "category": "citation",
+    "query": "Gen 1:1",
+    "expectedVerseIds": [
+      "01001001"
+    ]
+  },
+  {
+    "id": "S-003",
+    "language": "S",
+    "category": "citation",
+    "query": "Génesis 1:1",
+    "expectedVerseIds": [
+      "01001001"
+    ]
+  },
+  {
+    "id": "E-004",
+    "language": "E",
+    "category": "citation",
+    "query": "Psalms 23:1-4",
+    "expectedVerseIds": [
+      "19023001",
+      "19023002",
+      "19023003",
+      "19023004"
+    ]
+  },
+  {
+    "id": "S-004",
+    "language": "S",
+    "category": "citation",
+    "query": "Salmos 23:1-4",
+    "expectedVerseIds": [
+      "19023001",
+      "19023002",
+      "19023003",
+      "19023004"
+    ]
+  },
+  {
+    "id": "E-005",
+    "language": "E",
+    "category": "citation",
+    "query": "Romans 8:31-39",
+    "expectedVerseIds": [
+      "45008031",
+      "45008032",
+      "45008033",
+      "45008034",
+      "45008035",
+      "45008036",
+      "45008037",
+      "45008038",
+      "45008039"
+    ]
+  },
+  {
+    "id": "S-005",
+    "language": "S",
+    "category": "citation",
+    "query": "Romanos 8:31-39",
+    "expectedVerseIds": [
+      "45008031",
+      "45008032",
+      "45008033",
+      "45008034",
+      "45008035",
+      "45008036",
+      "45008037",
+      "45008038",
+      "45008039"
+    ]
+  },
+  {
+    "id": "E-006",
+    "language": "E",
+    "category": "citation",
+    "query": "Matthew 5:3-10",
+    "expectedVerseIds": [
+      "40005003",
+      "40005004",
+      "40005005",
+      "40005006",
+      "40005007",
+      "40005008",
+      "40005009",
+      "40005010"
+    ]
+  },
+  {
+    "id": "S-006",
+    "language": "S",
+    "category": "citation",
+    "query": "Mateo 5:3-10",
+    "expectedVerseIds": [
+      "40005003",
+      "40005004",
+      "40005005",
+      "40005006",
+      "40005007",
+      "40005008",
+      "40005009",
+      "40005010"
+    ]
+  },
+  {
+    "id": "E-007",
+    "language": "E",
+    "category": "citation",
+    "query": "Luke 15:11-24",
+    "expectedVerseIds": [
+      "42015011",
+      "42015012",
+      "42015013",
+      "42015014",
+      "42015015",
+      "42015016",
+      "42015017",
+      "42015018",
+      "42015019",
+      "42015020",
+      "42015021",
+      "42015022",
+      "42015023",
+      "42015024"
+    ]
+  },
+  {
+    "id": "S-007",
+    "language": "S",
+    "category": "citation",
+    "query": "Lucas 15:11-24",
+    "expectedVerseIds": [
+      "42015011",
+      "42015012",
+      "42015013",
+      "42015014",
+      "42015015",
+      "42015016",
+      "42015017",
+      "42015018",
+      "42015019",
+      "42015020",
+      "42015021",
+      "42015022",
+      "42015023",
+      "42015024"
+    ]
+  },
+  {
+    "id": "E-008",
+    "language": "E",
+    "category": "citation",
+    "query": "1 Corinthians 13:4-8",
+    "expectedVerseIds": [
+      "46013004",
+      "46013005",
+      "46013006",
+      "46013007",
+      "46013008"
+    ]
+  },
+  {
+    "id": "S-008",
+    "language": "S",
+    "category": "citation",
+    "query": "1 Corintios 13:4-8",
+    "expectedVerseIds": [
+      "46013004",
+      "46013005",
+      "46013006",
+      "46013007",
+      "46013008"
+    ]
+  },
+  {
+    "id": "E-009",
+    "language": "E",
+    "category": "citation",
+    "query": "Exodus 20:12",
+    "expectedVerseIds": [
+      "02020012"
+    ]
+  },
+  {
+    "id": "S-009",
+    "language": "S",
+    "category": "citation",
+    "query": "Éxodo 20:12",
+    "expectedVerseIds": [
+      "02020012"
+    ]
+  },
+  {
+    "id": "E-010",
+    "language": "E",
+    "category": "citation",
+    "query": "Revelation 21:4",
+    "expectedVerseIds": [
+      "66021004"
+    ]
+  },
+  {
+    "id": "S-010",
+    "language": "S",
+    "category": "citation",
+    "query": "Apocalipsis 21:4",
+    "expectedVerseIds": [
+      "66021004"
+    ]
+  },
+  {
+    "id": "E-011",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "In the beginning was the Word",
+    "expectedVerseIds": [
+      "43001001"
+    ]
+  },
+  {
+    "id": "S-011",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "En el principio la Palabra",
+    "expectedVerseIds": [
+      "43001001"
+    ]
+  },
+  {
+    "id": "E-012",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "Our Father in the heavens",
+    "expectedVerseIds": [
+      "40006009"
+    ]
+  },
+  {
+    "id": "S-012",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Padre nuestro que estás en los cielos",
+    "expectedVerseIds": [
+      "40006009"
+    ]
+  },
+  {
+    "id": "E-013",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "Jehovah is my Shepherd",
+    "expectedVerseIds": [
+      "19023001"
+    ]
+  },
+  {
+    "id": "S-013",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Jehová es mi Pastor",
+    "expectedVerseIds": [
+      "19023001"
+    ]
+  },
+  {
+    "id": "E-014",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "Jesus gave way to tears",
+    "expectedVerseIds": [
+      "43011035"
+    ]
+  },
+  {
+    "id": "S-014",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Jesús cedió a las lágrimas",
+    "expectedVerseIds": [
+      "43011035"
+    ]
+  },
+  {
+    "id": "E-015",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "In the beginning God created",
+    "expectedVerseIds": [
+      "01001001"
+    ]
+  },
+  {
+    "id": "S-015",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "En el principio Dios creó",
+    "expectedVerseIds": [
+      "01001001"
+    ]
+  },
+  {
+    "id": "E-016",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "Happy are the peacemakers",
+    "expectedVerseIds": [
+      "40005009"
+    ]
+  },
+  {
+    "id": "S-016",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Felices los que promueven la paz",
+    "expectedVerseIds": [
+      "40005009"
+    ]
+  },
+  {
+    "id": "E-017",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "those hoping in Jehovah will regain power",
+    "expectedVerseIds": [
+      "23040031"
+    ]
+  },
+  {
+    "id": "S-017",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "los que esperan en Jehová recobrarán las fuerzas",
+    "expectedVerseIds": [
+      "23040031"
+    ]
+  },
+  {
+    "id": "E-018",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "For all things I have the strength",
+    "expectedVerseIds": [
+      "50004013"
+    ]
+  },
+  {
+    "id": "S-018",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Tengo fuerzas para todo",
+    "expectedVerseIds": [
+      "50004013"
+    ]
+  },
+  {
+    "id": "E-019",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "I am the way and the truth and the life",
+    "expectedVerseIds": [
+      "43014006"
+    ]
+  },
+  {
+    "id": "S-019",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "Yo soy el camino y la verdad y la vida",
+    "expectedVerseIds": [
+      "43014006"
+    ]
+  },
+  {
+    "id": "E-020",
+    "language": "E",
+    "category": "exact_phrase",
+    "query": "you whose name is Jehovah",
+    "expectedVerseIds": [
+      "19083018"
+    ]
+  },
+  {
+    "id": "S-020",
+    "language": "S",
+    "category": "exact_phrase",
+    "query": "tú cuyo nombre es Jehová",
+    "expectedVerseIds": [
+      "19083018"
+    ]
+  },
+  {
+    "id": "E-021",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "seek first the Kingdom",
+    "expectedVerseIds": [
+      "40006033"
+    ]
+  },
+  {
+    "id": "S-021",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "busquen primero el Reino",
+    "expectedVerseIds": [
+      "40006033"
+    ]
+  },
+  {
+    "id": "E-022",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "love among yourselves disciples",
+    "expectedVerseIds": [
+      "43013035"
+    ]
+  },
+  {
+    "id": "S-022",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "amor entre ustedes discípulos",
+    "expectedVerseIds": [
+      "43013035"
+    ]
+  },
+  {
+    "id": "E-023",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "trust in Jehovah all your heart",
+    "expectedVerseIds": [
+      "20003005",
+      "20003006"
+    ]
+  },
+  {
+    "id": "S-023",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "confía en Jehová con todo tu corazón",
+    "expectedVerseIds": [
+      "20003005",
+      "20003006"
+    ]
+  },
+  {
+    "id": "E-024",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "keep on asking seeking knocking",
+    "expectedVerseIds": [
+      "40007007"
+    ]
+  },
+  {
+    "id": "S-024",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "sigan pidiendo buscando tocando",
+    "expectedVerseIds": [
+      "40007007"
+    ]
+  },
+  {
+    "id": "E-025",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "transformed by making your mind over",
+    "expectedVerseIds": [
+      "45012002"
+    ]
+  },
+  {
+    "id": "S-025",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "transformen su mente",
+    "expectedVerseIds": [
+      "45012002"
+    ]
+  },
+  {
+    "id": "E-026",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "fruitage of the spirit love joy peace",
+    "expectedVerseIds": [
+      "48005022",
+      "48005023"
+    ]
+  },
+  {
+    "id": "S-026",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "fruto del espíritu amor gozo paz",
+    "expectedVerseIds": [
+      "48005022",
+      "48005023"
+    ]
+  },
+  {
+    "id": "E-027",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "put on complete suit of armor",
+    "expectedVerseIds": [
+      "49006011"
+    ]
+  },
+  {
+    "id": "S-027",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "pónganse la armadura completa",
+    "expectedVerseIds": [
+      "49006011"
+    ]
+  },
+  {
+    "id": "E-028",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "more happiness in giving",
+    "expectedVerseIds": [
+      "44020035"
+    ]
+  },
+  {
+    "id": "S-028",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "más felicidad en dar",
+    "expectedVerseIds": [
+      "44020035"
+    ]
+  },
+  {
+    "id": "E-029",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "lacking in wisdom ask God",
+    "expectedVerseIds": [
+      "59001005"
+    ]
+  },
+  {
+    "id": "S-029",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "si a alguno le falta sabiduría pídasela a Dios",
+    "expectedVerseIds": [
+      "59001005"
+    ]
+  },
+  {
+    "id": "E-030",
+    "language": "E",
+    "category": "partial_phrase",
+    "query": "throw all your anxiety on him",
+    "expectedVerseIds": [
+      "60005007"
+    ]
+  },
+  {
+    "id": "S-030",
+    "language": "S",
+    "category": "partial_phrase",
+    "query": "echen sobre él todas sus inquietudes",
+    "expectedVerseIds": [
+      "60005007"
+    ]
+  },
+  {
+    "id": "E-031",
+    "language": "E",
+    "category": "narrative",
+    "query": "parable of the prodigal son returning home",
+    "expectedVerseIds": [
+      "42015011",
+      "42015012",
+      "42015013",
+      "42015014",
+      "42015015",
+      "42015016",
+      "42015017",
+      "42015018",
+      "42015019",
+      "42015020",
+      "42015021",
+      "42015022",
+      "42015023",
+      "42015024",
+      "42015025",
+      "42015026",
+      "42015027",
+      "42015028",
+      "42015029",
+      "42015030",
+      "42015031",
+      "42015032"
+    ]
+  },
+  {
+    "id": "S-031",
+    "language": "S",
+    "category": "narrative",
+    "query": "parábola del hijo pródigo que vuelve a casa",
+    "expectedVerseIds": [
+      "42015011",
+      "42015012",
+      "42015013",
+      "42015014",
+      "42015015",
+      "42015016",
+      "42015017",
+      "42015018",
+      "42015019",
+      "42015020",
+      "42015021",
+      "42015022",
+      "42015023",
+      "42015024",
+      "42015025",
+      "42015026",
+      "42015027",
+      "42015028",
+      "42015029",
+      "42015030",
+      "42015031",
+      "42015032"
+    ]
+  },
+  {
+    "id": "E-032",
+    "language": "E",
+    "category": "narrative",
+    "query": "good Samaritan helps injured traveler",
+    "expectedVerseIds": [
+      "42010030",
+      "42010031",
+      "42010032",
+      "42010033",
+      "42010034",
+      "42010035",
+      "42010036",
+      "42010037"
+    ]
+  },
+  {
+    "id": "S-032",
+    "language": "S",
+    "category": "narrative",
+    "query": "buen samaritano ayuda al viajero herido",
+    "expectedVerseIds": [
+      "42010030",
+      "42010031",
+      "42010032",
+      "42010033",
+      "42010034",
+      "42010035",
+      "42010036",
+      "42010037"
+    ]
+  },
+  {
+    "id": "E-033",
+    "language": "E",
+    "category": "narrative",
+    "query": "Jesus calms the storm at sea",
+    "expectedVerseIds": [
+      "41004035",
+      "41004036",
+      "41004037",
+      "41004038",
+      "41004039",
+      "41004040",
+      "41004041"
+    ]
+  },
+  {
+    "id": "S-033",
+    "language": "S",
+    "category": "narrative",
+    "query": "Jesús calma la tormenta en el mar",
+    "expectedVerseIds": [
+      "41004035",
+      "41004036",
+      "41004037",
+      "41004038",
+      "41004039",
+      "41004040",
+      "41004041"
+    ]
+  },
+  {
+    "id": "E-034",
+    "language": "E",
+    "category": "narrative",
+    "query": "Jesus raises Lazarus from the tomb",
+    "expectedVerseIds": [
+      "43011038",
+      "43011039",
+      "43011040",
+      "43011041",
+      "43011042",
+      "43011043",
+      "43011044"
+    ]
+  },
+  {
+    "id": "S-034",
+    "language": "S",
+    "category": "narrative",
+    "query": "Jesús resucita a Lázaro de la tumba",
+    "expectedVerseIds": [
+      "43011038",
+      "43011039",
+      "43011040",
+      "43011041",
+      "43011042",
+      "43011043",
+      "43011044"
+    ]
+  },
+  {
+    "id": "E-035",
+    "language": "E",
+    "category": "narrative",
+    "query": "feeding five thousand with loaves and fish",
+    "expectedVerseIds": [
+      "40014013",
+      "40014014",
+      "40014015",
+      "40014016",
+      "40014017",
+      "40014018",
+      "40014019",
+      "40014020",
+      "40014021"
+    ]
+  },
+  {
+    "id": "S-035",
+    "language": "S",
+    "category": "narrative",
+    "query": "alimenta a cinco mil con panes y peces",
+    "expectedVerseIds": [
+      "40014013",
+      "40014014",
+      "40014015",
+      "40014016",
+      "40014017",
+      "40014018",
+      "40014019",
+      "40014020",
+      "40014021"
+    ]
+  },
+  {
+    "id": "E-036",
+    "language": "E",
+    "category": "narrative",
+    "query": "Noah builds the ark before the flood",
+    "expectedVerseIds": [
+      "01006013",
+      "01006014",
+      "01006015",
+      "01006016",
+      "01006017",
+      "01006018",
+      "01006019",
+      "01006020",
+      "01006021",
+      "01006022"
+    ]
+  },
+  {
+    "id": "S-036",
+    "language": "S",
+    "category": "narrative",
+    "query": "Noé construye el arca antes del diluvio",
+    "expectedVerseIds": [
+      "01006013",
+      "01006014",
+      "01006015",
+      "01006016",
+      "01006017",
+      "01006018",
+      "01006019",
+      "01006020",
+      "01006021",
+      "01006022"
+    ]
+  },
+  {
+    "id": "E-037",
+    "language": "E",
+    "category": "narrative",
+    "query": "Moses parts the Red Sea",
+    "expectedVerseIds": [
+      "02014021",
+      "02014022",
+      "02014023",
+      "02014024",
+      "02014025",
+      "02014026",
+      "02014027",
+      "02014028",
+      "02014029",
+      "02014030",
+      "02014031"
+    ]
+  },
+  {
+    "id": "S-037",
+    "language": "S",
+    "category": "narrative",
+    "query": "Moisés divide el mar Rojo",
+    "expectedVerseIds": [
+      "02014021",
+      "02014022",
+      "02014023",
+      "02014024",
+      "02014025",
+      "02014026",
+      "02014027",
+      "02014028",
+      "02014029",
+      "02014030",
+      "02014031"
+    ]
+  },
+  {
+    "id": "E-038",
+    "language": "E",
+    "category": "narrative",
+    "query": "David defeats Goliath with a stone",
+    "expectedVerseIds": [
+      "09017040",
+      "09017041",
+      "09017042",
+      "09017043",
+      "09017044",
+      "09017045",
+      "09017046",
+      "09017047",
+      "09017048",
+      "09017049",
+      "09017050"
+    ]
+  },
+  {
+    "id": "S-038",
+    "language": "S",
+    "category": "narrative",
+    "query": "David derrota a Goliat con una piedra",
+    "expectedVerseIds": [
+      "09017040",
+      "09017041",
+      "09017042",
+      "09017043",
+      "09017044",
+      "09017045",
+      "09017046",
+      "09017047",
+      "09017048",
+      "09017049",
+      "09017050"
+    ]
+  },
+  {
+    "id": "E-039",
+    "language": "E",
+    "category": "narrative",
+    "query": "Daniel survives the lions den",
+    "expectedVerseIds": [
+      "27006016",
+      "27006017",
+      "27006018",
+      "27006019",
+      "27006020",
+      "27006021",
+      "27006022",
+      "27006023"
+    ]
+  },
+  {
+    "id": "S-039",
+    "language": "S",
+    "category": "narrative",
+    "query": "Daniel sobrevive en el foso de los leones",
+    "expectedVerseIds": [
+      "27006016",
+      "27006017",
+      "27006018",
+      "27006019",
+      "27006020",
+      "27006021",
+      "27006022",
+      "27006023"
+    ]
+  },
+  {
+    "id": "E-040",
+    "language": "E",
+    "category": "narrative",
+    "query": "parable of ten virgins and lamps",
+    "expectedVerseIds": [
+      "40025001",
+      "40025002",
+      "40025003",
+      "40025004",
+      "40025005",
+      "40025006",
+      "40025007",
+      "40025008",
+      "40025009",
+      "40025010",
+      "40025011",
+      "40025012",
+      "40025013"
+    ]
+  },
+  {
+    "id": "S-040",
+    "language": "S",
+    "category": "narrative",
+    "query": "parábola de las diez vírgenes y lámparas",
+    "expectedVerseIds": [
+      "40025001",
+      "40025002",
+      "40025003",
+      "40025004",
+      "40025005",
+      "40025006",
+      "40025007",
+      "40025008",
+      "40025009",
+      "40025010",
+      "40025011",
+      "40025012",
+      "40025013"
+    ]
+  },
+  {
+    "id": "E-041",
+    "language": "E",
+    "category": "conceptual",
+    "query": "How can I stop worrying about food and clothing?",
+    "expectedVerseIds": [
+      "40006025",
+      "40006026",
+      "40006027",
+      "40006028",
+      "40006029",
+      "40006030",
+      "40006031",
+      "40006032",
+      "40006033",
+      "40006034"
+    ]
+  },
+  {
+    "id": "S-041",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cómo puedo dejar de preocuparme por la comida y la ropa?",
+    "expectedVerseIds": [
+      "40006025",
+      "40006026",
+      "40006027",
+      "40006028",
+      "40006029",
+      "40006030",
+      "40006031",
+      "40006032",
+      "40006033",
+      "40006034"
+    ]
+  },
+  {
+    "id": "E-042",
+    "language": "E",
+    "category": "conceptual",
+    "query": "What does patient love look like?",
+    "expectedVerseIds": [
+      "46013004",
+      "46013005",
+      "46013006",
+      "46013007",
+      "46013008"
+    ]
+  },
+  {
+    "id": "S-042",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cómo se muestra el amor paciente?",
+    "expectedVerseIds": [
+      "46013004",
+      "46013005",
+      "46013006",
+      "46013007",
+      "46013008"
+    ]
+  },
+  {
+    "id": "E-043",
+    "language": "E",
+    "category": "conceptual",
+    "query": "Who cares for me like a shepherd?",
+    "expectedVerseIds": [
+      "19023001",
+      "19023002",
+      "19023003",
+      "19023004"
+    ]
+  },
+  {
+    "id": "S-043",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Quién me cuida como un pastor?",
+    "expectedVerseIds": [
+      "19023001",
+      "19023002",
+      "19023003",
+      "19023004"
+    ]
+  },
+  {
+    "id": "E-044",
+    "language": "E",
+    "category": "conceptual",
+    "query": "Why did God give his Son?",
+    "expectedVerseIds": [
+      "43003016"
+    ]
+  },
+  {
+    "id": "S-044",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Por qué dio Dios a su Hijo?",
+    "expectedVerseIds": [
+      "43003016"
+    ]
+  },
+  {
+    "id": "E-045",
+    "language": "E",
+    "category": "conceptual",
+    "query": "Will death and pain end?",
+    "expectedVerseIds": [
+      "66021004"
+    ]
+  },
+  {
+    "id": "S-045",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Se acabarán la muerte y el dolor?",
+    "expectedVerseIds": [
+      "66021004"
+    ]
+  },
+  {
+    "id": "E-046",
+    "language": "E",
+    "category": "conceptual",
+    "query": "How often should I forgive someone?",
+    "expectedVerseIds": [
+      "40018021",
+      "40018022"
+    ]
+  },
+  {
+    "id": "S-046",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cuántas veces debo perdonar a alguien?",
+    "expectedVerseIds": [
+      "40018021",
+      "40018022"
+    ]
+  },
+  {
+    "id": "E-047",
+    "language": "E",
+    "category": "conceptual",
+    "query": "How should I treat other people?",
+    "expectedVerseIds": [
+      "40007012"
+    ]
+  },
+  {
+    "id": "S-047",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cómo debo tratar a los demás?",
+    "expectedVerseIds": [
+      "40007012"
+    ]
+  },
+  {
+    "id": "E-048",
+    "language": "E",
+    "category": "conceptual",
+    "query": "How do prayer and peace help anxiety?",
+    "expectedVerseIds": [
+      "50004006",
+      "50004007"
+    ]
+  },
+  {
+    "id": "S-048",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cómo ayudan la oración y la paz con la ansiedad?",
+    "expectedVerseIds": [
+      "50004006",
+      "50004007"
+    ]
+  },
+  {
+    "id": "E-049",
+    "language": "E",
+    "category": "conceptual",
+    "query": "What are the greatest commandments?",
+    "expectedVerseIds": [
+      "40022037",
+      "40022038",
+      "40022039"
+    ]
+  },
+  {
+    "id": "S-049",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Cuáles son los mandamientos más importantes?",
+    "expectedVerseIds": [
+      "40022037",
+      "40022038",
+      "40022039"
+    ]
+  },
+  {
+    "id": "E-050",
+    "language": "E",
+    "category": "conceptual",
+    "query": "What hope is there for those in graves?",
+    "expectedVerseIds": [
+      "43005028",
+      "43005029"
+    ]
+  },
+  {
+    "id": "S-050",
+    "language": "S",
+    "category": "conceptual",
+    "query": "¿Qué esperanza hay para los que están en las tumbas?",
+    "expectedVerseIds": [
+      "43005028",
+      "43005029"
+    ]
+  }
+]

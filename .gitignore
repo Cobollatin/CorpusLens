@@ -6,6 +6,7 @@
 data/raw/
 data/snapshots/
 data/batch/
+data/spend/
 .env*
 *.secret*
 *secrets*.json
