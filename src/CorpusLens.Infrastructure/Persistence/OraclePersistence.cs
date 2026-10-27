@@ -127,7 +127,7 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
                 }
             }
             var spans = snapshot.Spans.ToDictionary(s => s.Id);
-            foreach (var chunk in snapshot.Chunks)
+            foreach (var chunk in snapshot.Chunks.DistinctBy(chunk => chunk.Id))
             {
                 var raw = string.Join(" ", chunk.Segments.Select(s => spans[s.TextSpanId].Text[s.Start..s.End]));
                 await Insert("INSERT INTO search_chunk(id,revision_id,layer,raw_text,embedding_input,input_sha256,context_header) VALUES(:id,:revision,:layer,:raw_value,:input,:sha,:header)",
