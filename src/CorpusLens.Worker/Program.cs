@@ -95,7 +95,7 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-can
         if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("OPENAI_API_KEY is required in the environment.");
         for (var i = 0; i < jobs.Count; i++)
         {
-            if (jobs[i].BatchId is null) continue;
+            if (jobs[i].BatchId is null || jobs[i].State == "imported") continue;
             using var status = await service.StatusAsync(jobs[i].BatchId!, key, CancellationToken.None);
             var state = status.RootElement.GetProperty("status").GetString()!;
             var outputId = status.RootElement.TryGetProperty("output_file_id", out var output) && output.ValueKind == JsonValueKind.String ? output.GetString() : null;
@@ -119,17 +119,37 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-can
     else
     {
         if (args.Length != 4 || args[3] != "--download") throw new ArgumentException("Use batch-import --lang E|S --download.");
-        if (jobs.Count == 0 || jobs.Any(j => j.State != "completed")) throw new InvalidOperationException("Every shard must have a completed ingest job.");
-        if (string.IsNullOrWhiteSpace(key) || jobs.Any(j => j.OutputFileId is null)) throw new InvalidOperationException("Completed Batch outputs are required.");
-        var lines = new List<string>();
-        foreach (var job in jobs) lines.AddRange((await service.DownloadAsync(job.OutputFileId!, key, CancellationToken.None)).Split('\n'));
-        var imported = new BatchOutputImporter().Parse(revision, "text-embedding-3-large-1024", snapshot.Chunks, lines);
+        if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("OPENAI_API_KEY is required.");
         var options = OracleDatabaseOptions.FromEnvironment();
         var repository = new OracleCorpusRepository(() => new OracleConnection(options.ConnectionString));
-        await repository.BulkInsertEmbeddingsAsync("text-embedding-3-large-1024", imported, CancellationToken.None);
-        for (var i = 0; i < jobs.Count; i++) jobs[i] = jobs[i] with { State = "imported" };
-        await SaveJobs();
-        Console.WriteLine($"Imported {imported.Count} complete vectors for {language}; provider reported {imported.Sum(e => (long)e.TokenCount)} input tokens.");
+        var chunkMap = snapshot.Chunks.DistinctBy(c => c.Id).ToDictionary(c => c.Id, StringComparer.Ordinal);
+        for (var i = 0; i < jobs.Count; i++)
+        {
+            if (jobs[i].State != "completed" || jobs[i].OutputFileId is null) continue;
+            var shardChunks = new List<SearchChunk>();
+            foreach (var line in File.ReadLines(jobs[i].ShardPath))
+            {
+                using var request = JsonDocument.Parse(line);
+                var id = request.RootElement.GetProperty("custom_id").GetString()!;
+                shardChunks.Add(chunkMap[id[(revision.Length + 1)..]]);
+            }
+            var output = await service.DownloadAsync(jobs[i].OutputFileId!, key, CancellationToken.None);
+            var imported = new BatchOutputImporter().Parse(revision, "text-embedding-3-large-1024", shardChunks, output.Split('\n'));
+            var existing = new HashSet<string>(StringComparer.Ordinal);
+            await using (var connection = new OracleConnection(options.ConnectionString))
+            {
+                await connection.OpenAsync();
+                await using var command = connection.CreateCommand();
+                command.CommandText = "SELECT e.chunk_id FROM chunk_embedding e JOIN search_chunk c ON c.id=e.chunk_id WHERE c.revision_id=:revision";
+                command.Parameters.Add("revision", OracleDbType.Varchar2).Value = revision;
+                await using var reader = await command.ExecuteReaderAsync();
+                while (await reader.ReadAsync()) existing.Add(reader.GetString(0));
+            }
+            await repository.BulkInsertEmbeddingsAsync("text-embedding-3-large-1024", imported.Where(e => !existing.Contains(e.ChunkId)).ToArray(), CancellationToken.None);
+            jobs[i] = jobs[i] with { State = "imported" };
+            await SaveJobs();
+            Console.WriteLine($"Imported shard {i + 1}: {imported.Count} vectors, {imported.Sum(e => (long)e.TokenCount)} provider tokens.");
+        }
     }
     return;
     async Task SaveJobs()
