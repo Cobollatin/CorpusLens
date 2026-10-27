@@ -15,6 +15,13 @@ public interface IRevisionStore
 }
 public sealed class RevisionSwitchoverService(IRevisionStore store)
 {
+    public async Task<bool> ActivateLexicalAsync(string revisionId, CoverageAuditReport coverage, CancellationToken token = default)
+    {
+        if (coverage.RevisionId != revisionId || !coverage.Passed)
+        { await store.QuarantineAsync(revisionId, token); return false; }
+        await store.SwitchAtomicallyAsync(revisionId, token);
+        return true;
+    }
     public async Task<bool> ActivateAsync(string revisionId, CoverageAuditReport coverage, EmbeddingCompletenessAudit embeddings, CancellationToken token = default)
     {
         if (coverage.RevisionId != revisionId || !coverage.Passed || !embeddings.Passed || embeddings.Present != embeddings.Expected || embeddings.Expected == 0)
@@ -32,12 +39,12 @@ public sealed class OracleRevisionStore(Func<DbConnection> connectionFactory) : 
         try
         {
             await Execute("UPDATE source_revision SET status='Superseded' WHERE status='Active' AND source_id=(SELECT source_id FROM source_revision WHERE id=:id)");
-            await Execute("UPDATE source_revision SET status='Active' WHERE id=:id AND status='Ready'");
+            await Execute("UPDATE source_revision SET status='Active' WHERE id=:id AND status IN ('Audited','Ready')");
             await tx.CommitAsync(token);
         }
         catch { await tx.RollbackAsync(token); throw; }
         async Task Execute(string sql)
-        { await using var cmd = connection.CreateCommand(); if (cmd is OracleCommand oracle) oracle.BindByName = true; cmd.Transaction = tx; cmd.CommandText = sql; OracleCorpusRepositoryParameter(cmd, revisionId); if (await cmd.ExecuteNonQueryAsync(token) != 1 && sql.Contains("status='Active' WHERE id")) throw new InvalidOperationException("Revision is not Ready."); }
+        { await using var cmd = connection.CreateCommand(); if (cmd is OracleCommand oracle) oracle.BindByName = true; cmd.Transaction = tx; cmd.CommandText = sql; OracleCorpusRepositoryParameter(cmd, revisionId); if (await cmd.ExecuteNonQueryAsync(token) != 1 && sql.Contains("SET status='Active'")) throw new InvalidOperationException("Revision is not Audited or Ready."); }
     }
     public async Task QuarantineAsync(string revisionId, CancellationToken token)
     {

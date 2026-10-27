@@ -41,13 +41,13 @@ public static class InfrastructureServices
         services.AddSingleton<PassageDeduplicator>();
         services.AddSingleton<IReranker, NoOpReranker>();
         services.AddSingleton(new HybridSearchOptions(config.GetValue("Search:VectorWeight", 1.0), config.GetValue("Search:LexicalWeight", 1.0), config.GetValue("Search:LayerBoost", .05)));
-        services.AddSingleton(_ => new OpenAiSpendGuard { LedgerPath = Path.Combine(NwtEpubCorpusAdapter.FindRepositoryRoot(), "data", "spend", "openai-queries.json") });
+        services.AddSingleton(_ => new OpenAiSpendGuard { LedgerPath = Path.Combine(config["Corpus:StatePath"] ?? Path.Combine(NwtEpubCorpusAdapter.FindRepositoryRoot(), "data", "spend"), "openai-queries.json") });
         if (!string.IsNullOrWhiteSpace(connection)) services.AddSingleton<IQueryEmbeddingCacheRepository, OracleQueryEmbeddingCacheRepository>();
         else services.AddSingleton<IQueryEmbeddingCacheRepository, NullQueryEmbeddingCacheRepository>();
         services.AddSingleton<IQueryEmbedder, OpenAiQueryEmbedder>();
         services.AddSingleton<CachedQueryEmbeddingService>();
         if (!string.IsNullOrWhiteSpace(connection)) services.AddSingleton<ISearchCorpus, OracleSearchCorpus>();
-        else services.AddSingleton<ISearchCorpus>(_ => new LocalSnapshotSearchCorpus(NwtEpubCorpusAdapter.FindRepositoryRoot()));
+        else services.AddSingleton<ISearchCorpus>(_ => new LocalSnapshotSearchCorpus(config["Corpus:SnapshotPath"] ?? Path.Combine(NwtEpubCorpusAdapter.FindRepositoryRoot(), "data", "snapshots")));
         services.AddSingleton<HybridSearchService>();
         services.AddHttpClient<ICorpusSourceAdapter, NwtEpubCorpusAdapter>();
         services.AddSingleton<IChunkingPipeline, InMemoryChunkingPipeline>();

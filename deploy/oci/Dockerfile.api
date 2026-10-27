@@ -1,0 +1,17 @@
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+ARG TARGETARCH
+WORKDIR /src
+COPY CorpusLens.sln ./
+COPY src/CorpusLens.Core/*.csproj src/CorpusLens.Core/
+COPY src/CorpusLens.Infrastructure/*.csproj src/CorpusLens.Infrastructure/
+COPY src/CorpusLens.Api/*.csproj src/CorpusLens.Api/
+RUN dotnet restore src/CorpusLens.Api/CorpusLens.Api.csproj -a $TARGETARCH
+COPY src/ src/
+RUN dotnet publish src/CorpusLens.Api/CorpusLens.Api.csproj -c Release -a $TARGETARCH --no-restore -o /app/publish
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/publish .
+ENV ASPNETCORE_URLS=http://+:8080
+EXPOSE 8080
+USER $APP_UID
+ENTRYPOINT ["dotnet", "CorpusLens.Api.dll"]

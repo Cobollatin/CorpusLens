@@ -1,6 +1,7 @@
 <main class="shell">
   <header class="masthead"><div class="brand">Corpus<span>Lens</span></div><span class="edition">Scripture search · English / Español</span></header>
-  <section class="hero"><p class="eyebrow">Search across the text</p><h1>Find the passage<br><em>you remember.</em></h1><p>Explore the Bible by words, meaning, or reference. Every result leads back to its verse.</p></section>
+  <p class="phase-banner">Semantic search coming in Phase 6. Search by words or Bible reference now.</p>
+  <section class="hero"><p class="eyebrow">Search across the text</p><h1>Find the passage<br><em>you remember.</em></h1><p>Explore the Bible by words or reference. Every result leads back to its verse.</p></section>
   <form class="search-panel" (ngSubmit)="search()">
     <div class="controls"><label>Corpus<select name="language" [(ngModel)]="language"><option value="E">English NWT</option><option value="S">Español TNM</option><option value="All">All</option></select></label><label>Mode<select name="mode" [(ngModel)]="mode"><option>Hybrid</option><option>Semantic</option><option>Lexical</option></select></label></div>
     <label class="query-label" for="query">Search query</label><div class="search-row"><input id="query" name="query" [(ngModel)]="query" type="search" placeholder="Try John 3:16 or ask a question" maxlength="500"><button type="submit" [disabled]="loading || !query.trim()">{{ loading ? 'Searching…' : 'Search' }}</button></div>

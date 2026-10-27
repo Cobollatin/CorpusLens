@@ -72,18 +72,6 @@ public class Phase4Tests
     {
         Assert.Equal("{love} OR {peace}", CorpusLens.Infrastructure.Persistence.OracleSearchRepository.EscapeTextQuery("love & peace"));
     }
-    [Fact] public async Task EvalLoaderAndMetrics()
-    {
-        var path = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + ".json");
-        try
-        {
-            await File.WriteAllTextAsync(path, "[{\"id\":\"x\",\"language\":\"E\",\"category\":\"citation\",\"query\":\"John 3:16\",\"expectedVerseIds\":[\"43003016\"]}]");
-            var item = Assert.Single(await EvaluationRunner.LoadAsync(path));
-            var metric = EvaluationRunner.Compute([(item, (IReadOnlyList<string>)["43003015", "43003016"])]);
-            Assert.Equal(1, metric.RecallAt5); Assert.Equal(.5, metric.MrrAt10); Assert.Equal(1 / Math.Log2(3), metric.NdcgAt10, 8);
-        }
-        finally { File.Delete(path); }
-    }
     [Fact] public async Task ApiEndpoints()
     {
         using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder => builder.ConfigureServices(services =>
@@ -91,12 +79,20 @@ public class Phase4Tests
             services.RemoveAll<ISearchCorpus>(); services.AddSingleton<ISearchCorpus, FakeCorpus>();
         }));
         using var client = factory.CreateClient();
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/health")).StatusCode);
-        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/corpora")).StatusCode);
+        var health = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/health");
+        Assert.False(health.GetProperty("embeddingsPopulated").GetBoolean());
+        Assert.True(health.GetProperty("phase6BackfillPending").GetBoolean());
+        var corpora = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/corpora");
+        Assert.True(corpora[0].GetProperty("phase6BackfillPending").GetBoolean());
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/api/v1/citations?query=John%203%3A16")).StatusCode);
-        var response = await client.PostAsJsonAsync("/api/v1/search", new SearchQuery("John 3:16", "E", null, 10, "Lexical"));
+        var chapter = await client.GetFromJsonAsync<System.Text.Json.JsonElement>("/api/v1/chapters/E/43/3");
+        Assert.Equal("43003016", chapter.GetProperty("verses")[0].GetProperty("id").GetString());
+        Assert.Contains("jw.org", chapter.GetProperty("verses")[0].GetProperty("jwLink").GetString());
+        var response = await client.PostAsJsonAsync("/api/v1/search", new SearchQuery("John 3:16", "E", null, 10, "Hybrid"));
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Contains("43003016", await response.Content.ReadAsStringAsync());
+        var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
+        Assert.True(body.GetProperty("degradedToLexicalOnly").GetBoolean());
+        Assert.Contains("43003016", body.ToString());
     }
     private static IConfiguration Config() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["OpenAI:EnableLiveEmbeddings"] = "true", ["OpenAI:ApiKey"] = "test-not-sent" }).Build();
     private sealed class FakeCache : IQueryEmbeddingCacheRepository
@@ -115,6 +111,7 @@ public class Phase4Tests
         public IReadOnlyDictionary<string, Verse> Verses { get; } = new Dictionary<string, Verse> { ["E:43003016"] = new(43, 3, 16, "For God loved the world", "John", "43003016") };
         public IReadOnlyList<Pericope> Pericopes => [];
         public string CoverageStatus => "fixture";
+        public bool EmbeddingsPopulated => false;
         public IReadOnlyList<SearchCandidate> Retrieve(string query, string language, string? edition, float[]? vector, string mode) => [new("fixture", "verse", ["43003016"], null, 1, null, 1)];
     }
 }

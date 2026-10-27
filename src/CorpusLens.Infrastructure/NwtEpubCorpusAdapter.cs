@@ -248,6 +248,8 @@ public sealed class NwtEpubCorpusAdapter : ICorpusSourceAdapter
 
     public static string FindRepositoryRoot()
     {
+        var configured = Environment.GetEnvironmentVariable("CORPUSLENS_REPOSITORY_ROOT");
+        if (!string.IsNullOrWhiteSpace(configured) && Directory.Exists(configured)) return configured;
         for (var directory = new DirectoryInfo(Directory.GetCurrentDirectory()); directory is not null; directory = directory.Parent)
             if (File.Exists(Path.Combine(directory.FullName, "CorpusLens.sln"))) return directory.FullName;
         throw new DirectoryNotFoundException("Could not locate CorpusLens.sln.");

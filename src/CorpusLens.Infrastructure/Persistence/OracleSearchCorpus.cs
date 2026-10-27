@@ -13,10 +13,13 @@ public sealed class OracleSearchCorpus : ISearchCorpus
         _connections = connections;
         _repository = new OracleSearchRepository(connections, options);
         _verses = new Lazy<IReadOnlyDictionary<string, Verse>>(LoadVerses);
+        _embeddingsPopulated = new Lazy<bool>(CheckEmbeddings);
     }
     public IReadOnlyDictionary<string, Verse> Verses => _verses.Value;
     public IReadOnlyList<Pericope> Pericopes => [];
     public string CoverageStatus => "Active Oracle revisions";
+    public bool EmbeddingsPopulated => _embeddingsPopulated.Value;
+    private readonly Lazy<bool> _embeddingsPopulated;
     private IReadOnlyDictionary<string, Verse> LoadVerses()
     {
         using var connection = _connections(); connection.Open();
@@ -31,6 +34,13 @@ public sealed class OracleSearchCorpus : ISearchCorpus
             result[reader.GetString(0) + ":" + id] = new Verse(book, chapter, number, reader.GetString(2), reader.GetString(3), id);
         }
         return result;
+    }
+    private bool CheckEmbeddings()
+    {
+        using var connection = _connections(); connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT COUNT(*) FROM chunk_embedding e JOIN search_chunk c ON c.id=e.chunk_id JOIN source_revision r ON r.id=c.revision_id WHERE r.status='Active' AND ROWNUM=1";
+        return Convert.ToInt32(command.ExecuteScalar()) > 0;
     }
     public IReadOnlyList<SearchCandidate> Retrieve(string query, string language, string? edition, float[]? vector, string mode)
     {

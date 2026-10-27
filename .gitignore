@@ -8,6 +8,7 @@ data/snapshots/
 data/batch/
 data/spend/
 .env*
+!deploy/oci/.env.example
 *.secret*
 *secrets*.json
 corpus-snapshot.json

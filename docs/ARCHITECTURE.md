@@ -8,7 +8,7 @@
 
 Build an **Angular SPA on Vercel Hobby**, an **ASP.NET Core Web API plus ingestion and keep-alive workers on OCI A1 Flex in `us-ashburn-1`**, and an **Oracle Autonomous Database 23ai Always Free** primary store. Use **OpenAI `text-embedding-3-large` with `dimensions=1024`** for indexed text and live queries. Index offline through the OpenAI Batch API; embed live cache misses through the standard API. Retrieve bounded Oracle Text and vector candidates and fuse their ranks in SQL.
 
-The first source is `NwtEpubCorpusAdapter`, producing a versioned `corpus-snapshot.json` per language. Four layers are locked: atomic verses, 3-verse windows at step 1, 5-verse windows at step 2, and source-defined pericope sections with context headers. Stable `BBCCCVVV` identity, full text coverage, checksums, and per-verse JW.org/WOL links are release gates. Never activate a partial index.
+Phase 5 serves audited text with no embeddings or OpenAI key; Phase 6 adds Batch backfill and vector search. The first source is `NwtEpubCorpusAdapter`, producing a versioned `corpus-snapshot.json` per language. Four layers are locked: atomic verses, 3-verse windows at step 1, 5-verse windows at step 2, and source-defined pericope sections with context headers. Stable `BBCCCVVV` identity, full text coverage, checksums, and per-verse JW.org/WOL links are release gates. Never activate a partial index.
 
 [Vercel Hobby](https://vercel.com/legal/terms) is free for **personal, non-commercial use**. OCI A1 costs $0 only if the tenancy's actual allowance and billing reconcile. A custom domain purchased on Vercel has a separate, variable cost. Azure is discarded; section 9 retains a short decision log.
 
@@ -35,7 +35,7 @@ OCI A1 worker -> daily authenticated SQL keep-alive and alert for ADB
 
 The Angular SPA uses Vercel's edge CDN, custom domain purchased on Vercel, and automatic HTTPS. Add the `api.<domain>` DNS record in Vercel DNS. Caddy obtains a Let's Encrypt certificate and proxies to the ASP.NET Core API on OCI A1 Flex in `us-ashburn-1`. Expose only intended HTTP/HTTPS entry points. API CORS permits the exact Vercel production origin only; any preview origin requires a deliberate separate allowlist entry. CORS does not replace server-side validation or rate limits. Cloudflare Tunnel is an alternative ingress if direct public routing is unsuitable. An E2 Micro is optional operations capacity, not part of the required topology.
 
-The API handles filters, cache lookups, query embedding misses, search, citations, rate limits, spend guards, and health. The ingestion worker extracts, audits, submits Batch jobs, reconciles results, and publishes revisions. The A1 keep-alive worker executes and records a real read-only SQL command daily. ADB connections use an mTLS wallet held **outside the repository**, with runtime secret injection and restricted file permissions.
+The API handles filters, cache lookups, query embedding misses, search, citations, rate limits, spend guards, and health. The ingestion worker extracts, audits, and publishes lexical revisions in Phase 5. Batch jobs and vector activation follow in Phase 6. The A1 keep-alive worker executes and records a real read-only SQL command daily. ADB connections use an mTLS wallet held **outside the repository**, with runtime secret injection and restricted file permissions.
 
 ## 3. Canonical model and EPUB adapter
 
@@ -68,7 +68,7 @@ For live queries, normalize Unicode/whitespace and language-aware case under a v
 
 Oracle Text and cosine-vector retrieval each take bounded candidates with identical edition/language/source/access filters. Rank within each branch, union IDs, then compute weighted reciprocal-rank fusion in SQL, for example `SUM(weight/(60+rank))`. Collapse overlapping verse ranges, highlight the best atomic verse, and return complete ranges with per-verse links. Do not directly combine raw Oracle Text scores and vector distances. A bounded local reranker is optional only after measured relevance and latency gains.
 
-Use a bilingual 100-query gold set for conceptual paraphrases, English/Spanish cross-lingual queries, multi-verse questions, exact citations, and negative/ambiguous cases. Measure recall@5/10/20, MRR or nDCG, distinct ranges, language errors, p50/p95 latency, and optional 1,536-dimension gains. Evaluation tunes the locked first implementation; a later provider change requires a new decision and full re-index.
+After Phase 6, assess relevance and latency with representative citation, lexical, and paraphrase queries. There is no fixed benchmark release gate. A later provider change requires a new decision and full re-index.
 
 ## 6. Oracle database
 
@@ -98,10 +98,10 @@ Unrounded lower totals are $0.559 + $0.325 = **$0.884** and $3.354 + $3.25 = **$
 ## 8. Release gates
 
 - Verify EPUB rights/display scope, source hashes, canon/versification, edition/locale mappings, and representative JW.org/WOL links.
-- Prove complete extraction and four-layer coverage; reconcile every Batch input/result, vector model/dimension, and active revision.
+- Prove complete extraction and four-layer coverage before Phase 5 lexical activation; reconcile Batch input/results and vector model/dimensions before Phase 6 vector activation.
 - Confirm ADB 23ai version, measured storage and ANN memory, Oracle Text behavior, daily keep-alive, wallet isolation, and restore path.
 - Enforce exact production-origin CORS, input limits, IP rate limits, cache privacy/eviction, monthly hard OpenAI spend cutoff, safe logs, and alerting.
-- Measure English/Spanish relevance and p50/p95 latency; display full cited ranges and collapse duplicate overlapping hits.
+- Check English/Spanish lexical relevance and p50/p95 latency; display full cited ranges and collapse duplicate overlapping hits. Assess semantic relevance after Phase 6.
 - Reconcile OCI A1 entitlement and billing and track Vercel/domain/free-tier costs before release.
 
 ## 9. Historical decision log
@@ -116,7 +116,7 @@ Earlier drafts considered self-hosted PostgreSQL/pgvector, local BGE-M3/E5 embed
 
 - [ ] Initialize the new repository and scaffold Angular SPA, ASP.NET Core API, worker, shared contracts, configuration, and CI.
 - [ ] Define canonical entities, versioned identity/normalization, API contracts, and secret/runtime boundaries.
-- [ ] Establish development fixtures and bilingual evaluation format without committing secrets.
+- [ ] Establish development fixtures without committing secrets.
 
 ### Phase 2 — EPUB adapter, snapshot, and coverage audit
 
@@ -124,20 +124,25 @@ Earlier drafts considered self-hosted PostgreSQL/pgvector, local BGE-M3/E5 embed
 - [ ] Validate book/chapter/verse and pericope extraction, `BBCCCVVV`, hashes, attribution, and JW.org/WOL locators.
 - [ ] Generate all four layers and prove full text coverage, stable IDs, and no unexplained omissions.
 
-### Phase 3 — ADB schema and Batch indexing
+### Phase 3 — ADB schema and audited snapshot staging
 
 - [ ] Verify ADB 23ai/free limits; implement schema, `VECTOR(1024, FLOAT32)`, `CONTEXT`/`WORLD_LEXER`, revision staging, and measured HNSW/IVF selection.
-- [ ] Prepare bounded Batch `.jsonl` files, submit 24-hour jobs, reconcile every result, and track actual token cost.
-- [ ] Activate only an audited revision; measure storage/index memory and test restore.
+- [ ] Prepare bounded Batch `.jsonl` export tooling for later backfill.
+- [ ] Stage only audited revisions; measure storage and test restore.
 
 ### Phase 4 — API, search, rerank, caching, and guards
 
 - [ ] Implement normalized queries, exact filters, Oracle Text/vector top-K, SQL RRF, overlap collapse, citations, and full-range responses.
 - [ ] Add LRU/DB query-vector cache, standard API embedding misses, IP rate limits, query caps, exact CORS, and hard monthly OpenAI cutoff.
-- [ ] Evaluate relevance/latency; enable bounded local reranking only if measured improvement justifies it.
+- [ ] Verify lexical relevance and latency on representative queries; enable bounded local reranking only if measured improvement justifies it.
 
-### Phase 5 — Vercel frontend, deployment, and monitoring
+### Phase 5 — Full deployment without embeddings
 
-- [ ] Build Angular search/context UI with verse links, highlights, language/edition filters, and full text.
-- [ ] Reconcile OCI A1 allowance; deploy API/worker behind Caddy, configure wallet outside repo, Vercel DNS/domain/SPA, and `api.<domain>` TLS.
-- [ ] Enable daily ADB SQL keep-alive, alerts, spend/latency/free-tier monitoring, restore checks, and final release-gate review.
+- [ ] Serve lexical search, citation lookup, and chapter browsing from audited Oracle revisions or local snapshots with an empty `chunk_embedding` table and no OpenAI key.
+- [ ] Build the Angular UI with verse links and a Phase 6 semantic-search notice. Configure the Vercel API URL at build time.
+- [ ] Reconcile OCI A1 allowance; deploy API/worker behind Caddy with the wallet outside the repo, exact-origin CORS, Vercel DNS/domain/SPA, and `api.<domain>` TLS. Keep daily ADB SQL keep-alive and operational monitoring.
+
+### Phase 6 — OpenAI text-embedding-3-large Batch Backfill & Vector Activation
+
+- [ ] Run `batch-export` for each audited language, then `batch-submit`, `batch-status`, and `batch-import`; reconcile every chunk and provider result before `switchover` to vector-enabled search.
+- [ ] Enable live query embeddings and vector retrieval only after complete backfill, index validation, and spend guard checks. Estimated initial two-language Batch cost is about **$0.99 total**, subject to actual token counts and current pricing.

@@ -1,6 +1,6 @@
-# Phase 4 search and evaluation
+# Phase 4 search
 
-The API can search the audited local English and Spanish snapshots without a database. Keep `data/snapshots/` outside git and run `dotnet run --project src/CorpusLens.Worker -- eval` for the offline lexical-only baseline. The 100-case set in `data/eval/bible-eval-100.json` has 50 queries per language; every expected verse ID was checked against both local snapshots when the set was generated. The evaluator reports verse-level Recall@5/10, MRR@10 and nDCG@10 by language and category. Its baseline does not establish semantic quality.
+The API can search audited local English and Spanish snapshots without a database. Keep `data/snapshots/` outside git.
 
 `/api/v1/search` accepts `query`, `language` (`E`, `S`, `All`), optional `edition`, `limit`, and `mode` (`Hybrid`, `Semantic`, `Lexical`). `/api/v1/citations?query=John%203%3A16` returns a parsed citation. `/api/v1/corpora` and `/api/v1/health` report availability and coverage. IP rate limiting is 60 requests per minute. Configure exact CORS origins with `Cors:AllowedOrigins`.
 

@@ -216,12 +216,24 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
             FROM fused f JOIN search_chunk c ON c.id=f.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
             ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
             """;
+        if (queryVector is null)
+            command.CommandText = """
+                WITH text_ranked AS (
+                  SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
+                  FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
+                  WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
+                ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50)
+                SELECT c.id,c.raw_text,:lexical_weight/(60+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END),
+                  c.layer,s.language,0,:lexical_weight/(60+t.rank_no)
+                FROM text_hits t JOIN search_chunk c ON c.id=t.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
+                ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
+                """;
         OracleCorpusRepository.Add(command, "language", request.Language);
         OracleCorpusRepository.Add(command, "edition", request.Edition is null ? DBNull.Value : request.Edition);
         OracleCorpusRepository.Add(command, "query", EscapeTextQuery(request.Query));
-        OracleCorpusRepository.Add(command, "vector", queryVector is null ? DBNull.Value : "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]");
+        if (queryVector is not null) OracleCorpusRepository.Add(command, "vector", "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]");
         OracleCorpusRepository.Add(command, "lexical_weight", (options ?? new()).LexicalWeight);
-        OracleCorpusRepository.Add(command, "vector_weight", (options ?? new()).VectorWeight);
+        if (queryVector is not null) OracleCorpusRepository.Add(command, "vector_weight", (options ?? new()).VectorWeight);
         OracleCorpusRepository.Add(command, "layer_boost", (options ?? new()).LayerBoost);
         OracleCorpusRepository.Add(command, "limit", Math.Clamp(request.Limit, 1, 50));
         var hits = new List<SearchHit>();

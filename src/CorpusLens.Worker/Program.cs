@@ -6,35 +6,7 @@ using System.Text.Json;
 using CorpusLens.Infrastructure.Persistence;
 using Oracle.ManagedDataAccess.Client;
 
-if (args.Length > 0 && args[0] == "eval")
-{
-    var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
-    var cases = await EvaluationRunner.LoadAsync(Path.Combine(root, "data", "eval", "bible-eval-100.json"));
-    var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>()).Build();
-    var corpus = new LocalSnapshotSearchCorpus(root);
-    var normalizer = new QueryNormalizer();
-    var search = new HybridSearchService(corpus, normalizer, new CitationQueryParser(),
-        new CachedQueryEmbeddingService(normalizer, new QueryVectorCache(), new NullQueryEmbeddingCacheRepository(),
-            new OpenAiQueryEmbedder(new OpenAiEmbeddingClient(new HttpClient(), config)), new OpenAiSpendGuard(), config),
-        new NoOpReranker(), new PassageDeduplicator(), new HybridSearchOptions());
-    var rows = new List<(EvalCase Case, IReadOnlyList<string> RankedIds)>();
-    foreach (var item in cases)
-    {
-        var response = await search.SearchAsync(new SearchQuery(item.Query, item.Language, null, 10, "Lexical"));
-        rows.Add((item, response.Results.SelectMany(r => r.Verses.Select(v => v.Id)).Distinct().ToArray()));
-    }
-    Console.WriteLine("LEXICAL-ONLY BASELINE (local snapshots; no embeddings or provider calls)");
-    foreach (var group in rows.GroupBy(r => (r.Case.Language, r.Case.Category)).OrderBy(g => g.Key.Language).ThenBy(g => g.Key.Category))
-    {
-        var metric = EvaluationRunner.Compute(group);
-        Console.WriteLine($"{group.Key.Language,-3} {group.Key.Category,-18} n={metric.Count,2} R@5={metric.RecallAt5:F3} R@10={metric.RecallAt10:F3} MRR@10={metric.MrrAt10:F3} nDCG@10={metric.NdcgAt10:F3}");
-    }
-    var total = EvaluationRunner.Compute(rows);
-    Console.WriteLine($"ALL n={total.Count} R@5={total.RecallAt5:F3} R@10={total.RecallAt10:F3} MRR@10={total.MrrAt10:F3} nDCG@10={total.NdcgAt10:F3}");
-    return;
-}
-
-if (args.Length > 0 && args[0] is "schema-migrate" or "revision-stage")
+if (args.Length > 0 && args[0] is "schema-migrate" or "revision-stage" or "revision-activate")
 {
     if (Environment.GetEnvironmentVariable("CORPUSLENS_ALLOW_ORACLE_CONNECT") != "yes")
         throw new InvalidOperationException("Set CORPUSLENS_ALLOW_ORACLE_CONNECT=yes for an authorized Oracle connection.");
@@ -48,8 +20,12 @@ if (args.Length > 0 && args[0] is "schema-migrate" or "revision-stage")
     {
         if (args.Length != 3 || args[1] != "--lang" || args[2] is not ("E" or "S")) throw new ArgumentException("Use revision-stage --lang E|S.");
         var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
-        var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(root, "data", "snapshots", $"nwt_{args[2]}.snapshot.json"));
-        await new OracleCorpusRepository(() => new OracleConnection(options.ConnectionString)).StageSnapshotAsync(snapshot, CancellationToken.None);
+        var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(SnapshotDirectory(root), $"nwt_{args[2]}.snapshot.json"));
+        if (args[0] == "revision-stage")
+            await new OracleCorpusRepository(() => new OracleConnection(options.ConnectionString)).StageSnapshotAsync(snapshot, CancellationToken.None);
+        else if (!await new RevisionSwitchoverService(new OracleRevisionStore(() => new OracleConnection(options.ConnectionString)))
+            .ActivateLexicalAsync(snapshot.Audit.RevisionId, snapshot.Audit))
+            throw new InvalidDataException("Coverage audit failed; revision was not activated.");
     }
     return;
 }
@@ -58,7 +34,7 @@ if (args.Length > 0 && args[0] == "batch-export")
 {
     if (args.Length != 3 || args[1] != "--lang" || args[2] is not ("E" or "S")) throw new ArgumentException("Use batch-export --lang E|S.");
     var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
-    var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(root, "data", "snapshots", $"nwt_{args[2]}.snapshot.json"));
+    var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(SnapshotDirectory(root), $"nwt_{args[2]}.snapshot.json"));
     if (!snapshot.Audit.Passed) throw new InvalidDataException("Coverage audit failed.");
     var revision = snapshot.Audit.RevisionId;
     var shards = new BatchJsonlBuilder().Build(revision, snapshot.Chunks, Path.Combine(root, "data", "batch", args[2]));
@@ -82,7 +58,7 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-imp
     Directory.CreateDirectory(directory);
     var jobPath = Path.Combine(directory, "ingest-jobs.json");
     var jobs = File.Exists(jobPath) ? JsonSerializer.Deserialize<List<BatchCliJob>>(await File.ReadAllTextAsync(jobPath))! : new List<BatchCliJob>();
-    var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(root, "data", "snapshots", $"nwt_{language}.snapshot.json"));
+    var snapshot = await CorpusSnapshotSerializer.ReadAsync(Path.Combine(SnapshotDirectory(root), $"nwt_{language}.snapshot.json"));
     var revision = snapshot.Audit.RevisionId;
     using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
     var service = new OpenAiBatchEmbeddingService(http);
@@ -209,7 +185,7 @@ if (args.Length > 0 && args[0] == "snapshot")
         var snapshot = new CorpusSnapshot("1", language, fetched.Artifact.Edition, fetched.Artifact.Uri, fetched.Artifact.Sha256,
             "nwt-epub-v1", CorpusVersions.Normalization, "Watch Tower Bible and Tract Society of Pennsylvania", "Owner display/excerpt rights review pending",
             spanHash, parsed.Verses, parsed.Pericopes, spans, chunks, audit, omitted);
-        var path = Path.Combine(repositoryRoot, "data", "snapshots", $"nwt_{language}.snapshot.json");
+        var path = Path.Combine(SnapshotDirectory(repositoryRoot), $"nwt_{language}.snapshot.json");
         await CorpusSnapshotSerializer.WriteAsync(snapshot, path);
         var restored = await CorpusSnapshotSerializer.ReadAsync(path);
         if (restored.SourceSha256 != fetched.Artifact.Sha256 || restored.SpansSha256 != spanHash || restored.Verses.Count != parsed.Verses.Count ||
@@ -236,5 +212,7 @@ builder.Services.AddHostedService<IngestionWorker>();
 builder.Services.AddHostedService<BatchPollingWorker>();
 builder.Services.AddHostedService<CoverageGateWorker>();
 builder.Build().Run();
+
+static string SnapshotDirectory(string root) => Environment.GetEnvironmentVariable("Corpus__SnapshotPath") ?? Path.Combine(root, "data", "snapshots");
 
 internal sealed record BatchCliJob(string RevisionId, string ShardPath, string State, string? BatchId, string? OutputFileId, long EstimatedTokens, decimal EstimatedCostUsd);

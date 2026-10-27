@@ -12,6 +12,7 @@ public interface ISearchCorpus
     IReadOnlyDictionary<string, Verse> Verses { get; }
     IReadOnlyList<Pericope> Pericopes { get; }
     string CoverageStatus { get; }
+    bool EmbeddingsPopulated { get; }
     IReadOnlyList<SearchCandidate> Retrieve(string query, string language, string? edition, float[]? vector, string mode);
 }
 
@@ -28,12 +29,13 @@ public sealed class LocalSnapshotSearchCorpus : ISearchCorpus
     public IReadOnlyDictionary<string, Verse> Verses => _verses;
     public IReadOnlyList<Pericope> Pericopes => _pericopes;
     public string CoverageStatus { get; private set; } = "No local snapshots loaded";
-    public LocalSnapshotSearchCorpus(string root, IReadOnlyDictionary<string, float[]>? vectors = null)
+    public bool EmbeddingsPopulated => _vectors.Count > 0;
+    public LocalSnapshotSearchCorpus(string snapshotDirectory, IReadOnlyDictionary<string, float[]>? vectors = null)
     {
         _vectors = vectors ?? new Dictionary<string, float[]>();
         foreach (var lang in new[] { "E", "S" })
         {
-            var path = Path.Combine(root, "data", "snapshots", $"nwt_{lang}.snapshot.json");
+            var path = Path.Combine(snapshotDirectory, $"nwt_{lang}.snapshot.json");
             if (!File.Exists(path)) continue;
             var snapshot = CorpusSnapshotSerializer.ReadAsync(path).GetAwaiter().GetResult();
             if (!snapshot.Audit.Passed) throw new InvalidDataException($"Snapshot {lang} failed coverage audit.");
@@ -197,7 +199,9 @@ public sealed class HybridSearchService(ISearchCorpus corpus, QueryNormalizer no
         var query = normalizer.Normalize(request.Query, lang == "All" ? "en" : lang == "S" ? "es" : "en");
         var citation = citations.Parse(query);
         var mode = request is SearchQuery q && q.Mode is "Lexical" or "Semantic" or "Hybrid" ? q.Mode : "Hybrid";
-        QueryEmbeddingResult embedding = mode == "Lexical" ? new(null, "lexical mode", false) : await embeddings.GetAsync(query, lang, token);
+        QueryEmbeddingResult embedding = mode == "Lexical" ? new(null, "lexical mode", false)
+            : !corpus.EmbeddingsPopulated ? new(null, "Phase 6 backfill pending", true)
+            : await embeddings.GetAsync(query, lang, token);
         var candidates = corpus.Retrieve(query, lang, request.Edition, embedding.Vector, embedding.Degraded ? "Lexical" : mode);
         if (citation is not null && (corpus is not LocalSnapshotSearchCorpus || request.Edition is null or "New World Translation"))
         {

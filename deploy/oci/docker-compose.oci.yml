@@ -1,0 +1,54 @@
+services:
+  api:
+    build:
+      context: ../..
+      dockerfile: deploy/oci/Dockerfile.api
+      platforms: [linux/arm64]
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Production
+      ConnectionStrings__Oracle: ${CORPUSLENS_ORACLE_CONNECTION_STRING:-}
+      Oracle__WalletPath: /run/oracle-wallet
+      Oracle__TnsAdmin: /run/oracle-wallet
+      TNS_ADMIN: /run/oracle-wallet
+      Corpus__SnapshotPath: /app/snapshots
+      Corpus__StatePath: /app/state
+      CORPUSLENS_REPOSITORY_ROOT: /app
+      Cors__AllowedOrigins__0: ${VERCEL_ORIGIN:?Set exact Vercel origin}
+    volumes:
+      - ${SNAPSHOT_PATH:?Set snapshot directory}:/app/snapshots:ro
+      - api_state:/app/state
+      - ${WALLET_PATH:?Set external wallet directory}:/run/oracle-wallet:ro
+    expose: ["8080"]
+  worker:
+    build:
+      context: ../..
+      dockerfile: deploy/oci/Dockerfile.worker
+      platforms: [linux/arm64]
+    restart: unless-stopped
+    environment:
+      ConnectionStrings__Oracle: ${CORPUSLENS_ORACLE_CONNECTION_STRING:-}
+      CORPUSLENS_ORACLE_CONNECTION_STRING: ${CORPUSLENS_ORACLE_CONNECTION_STRING:-}
+      CORPUSLENS_ORACLE_WALLET_PATH: /run/oracle-wallet
+      CORPUSLENS_ALLOW_ORACLE_CONNECT: "yes"
+      TNS_ADMIN: /run/oracle-wallet
+      Corpus__SnapshotPath: /app/snapshots
+      CORPUSLENS_REPOSITORY_ROOT: /app
+    volumes:
+      - ${SNAPSHOT_PATH}:/app/snapshots:ro
+      - ${WALLET_PATH}:/run/oracle-wallet:ro
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    environment:
+      DOMAIN: ${DOMAIN:?Set domain}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [api]
+volumes:
+  api_state:
+  caddy_data:
+  caddy_config:

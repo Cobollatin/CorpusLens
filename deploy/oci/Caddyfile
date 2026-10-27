@@ -1,0 +1,7 @@
+api.{$DOMAIN} {
+    reverse_proxy api:8080 {
+        health_uri /api/v1/health
+        health_interval 30s
+        health_timeout 5s
+    }
+}
