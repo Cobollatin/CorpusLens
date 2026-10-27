@@ -222,7 +222,7 @@ if (args.Length > 0 && args[0] == "phase6-array-probe")
         ids = selected.ToArray();
     }
     if (ids.Length != 2) throw new InvalidOperationException("Two chunks are required for the array probe.");
-    await using var transaction = await connection.BeginTransactionAsync();
+    await using var transaction = (OracleTransaction)await connection.BeginTransactionAsync();
     try
     {
         await using var command = connection.CreateCommand();
