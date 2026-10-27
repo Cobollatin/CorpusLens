@@ -174,6 +174,38 @@ if (args.Length > 0 && args[0] == "phase6-verify")
     return;
 }
 
+if (args.Length > 0 && args[0] == "phase6-index")
+{
+    if (args.Length != 1 || Environment.GetEnvironmentVariable("CORPUSLENS_ALLOW_ORACLE_CONNECT") != "yes") throw new ArgumentException("Use phase6-index with authorized Oracle access.");
+    var options = OracleDatabaseOptions.FromEnvironment();
+    await using var connection = new OracleConnection(options.ConnectionString);
+    await connection.OpenAsync();
+    await using (var completeness = connection.CreateCommand())
+    {
+        completeness.CommandText = "SELECT COUNT(*) FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id LEFT JOIN chunk_embedding e ON e.chunk_id=c.id WHERE r.status='Active' AND e.chunk_id IS NULL";
+        if (Convert.ToInt64(await completeness.ExecuteScalarAsync()) != 0) throw new InvalidOperationException("Cannot rebuild vector index before embeddings are complete.");
+    }
+    async Task Execute(string sql)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+    await Execute("DROP INDEX idx_chunk_embedding_ivf");
+    try
+    {
+        await Execute(OracleSchemaRunner.ReadEmbedded("003_hnsw.sql").Trim());
+        Console.WriteLine("HNSW vector index created.");
+    }
+    catch (OracleException error)
+    {
+        Console.WriteLine($"HNSW unavailable (ORA-{error.Number}); creating IVF fallback.");
+        await Execute(OracleSchemaRunner.ReadEmbedded("003_ivf_fallback.sql").Trim());
+        Console.WriteLine("IVF vector index created.");
+    }
+    return;
+}
+
 if (args.Length > 0 && args[0] == "snapshot")
 {
     var languages = new List<string>();

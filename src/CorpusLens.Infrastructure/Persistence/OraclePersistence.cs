@@ -156,25 +156,29 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
     {
         await using var connection = connectionFactory();
         await connection.OpenAsync(token);
-        await using var transaction = await connection.BeginTransactionAsync(token);
-        try
+        foreach (var batch in embeddings.Chunk(100))
         {
-            foreach (var embedding in embeddings)
+            if (batch.Any(e => e.Vector.Length != 1024 || e.Vector.Any(v => !float.IsFinite(v)))) throw new InvalidDataException("Invalid embedding vector.");
+            await using var transaction = await connection.BeginTransactionAsync(token);
+            try
             {
-                if (embedding.Vector.Length != 1024 || embedding.Vector.Any(v => !float.IsFinite(v))) throw new InvalidDataException("Invalid embedding vector.");
                 await using var command = connection.CreateCommand();
-                if (command is OracleCommand oracleCommand) oracleCommand.BindByName = true;
+                if (command is not OracleCommand oracleCommand) throw new InvalidOperationException("Oracle connection required for vector array binding.");
+                oracleCommand.BindByName = true;
+                oracleCommand.ArrayBindCount = batch.Length;
                 command.Transaction = transaction;
                 command.CommandText = "INSERT INTO chunk_embedding(chunk_id,model_id,embedding,token_count) VALUES(:chunk,:model,TO_VECTOR(:vector),:tokens)";
-                Add(command, "chunk", embedding.ChunkId);
-                Add(command, "model", modelId);
-                Add(command, "vector", "[" + string.Join(',', embedding.Vector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]");
-                Add(command, "tokens", embedding.TokenCount);
+                var vectorStrings = batch.Select(e => "[" + string.Join(',', e.Vector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]").ToArray();
+                oracleCommand.Parameters.Add("chunk", OracleDbType.Varchar2, batch.Select(e => e.ChunkId).ToArray(), System.Data.ParameterDirection.Input);
+                oracleCommand.Parameters.Add("model", OracleDbType.Varchar2, batch.Select(_ => modelId).ToArray(), System.Data.ParameterDirection.Input);
+                var vectorParameter = oracleCommand.Parameters.Add("vector", OracleDbType.Varchar2, vectorStrings, System.Data.ParameterDirection.Input);
+                vectorParameter.ArrayBindSize = vectorStrings.Select(s => s.Length).ToArray();
+                oracleCommand.Parameters.Add("tokens", OracleDbType.Int32, batch.Select(e => e.TokenCount).ToArray(), System.Data.ParameterDirection.Input);
                 await command.ExecuteNonQueryAsync(token);
+                await transaction.CommitAsync(token);
             }
-            await transaction.CommitAsync(token);
+            catch { await transaction.RollbackAsync(token); throw; }
         }
-        catch { await transaction.RollbackAsync(token); throw; }
     }
     internal static void Add(DbCommand command, string name, object value)
     { var parameter = command.CreateParameter(); parameter.ParameterName = name; parameter.Value = value; command.Parameters.Add(parameter); }
