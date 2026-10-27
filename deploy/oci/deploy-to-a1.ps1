@@ -3,7 +3,8 @@ param(
     [Parameter(Mandatory)][string]$SshKeyPath,
     [Parameter(Mandatory)][string]$Domain,
     [string]$SshUser = 'ubuntu',
-    [string]$LocalSnapshotPath = 'data/snapshots'
+    [string]$LocalSnapshotPath = 'data/snapshots',
+    [switch]$SkipMigration
 )
 $ErrorActionPreference = 'Stop'
 $key = (Resolve-Path -LiteralPath $SshKeyPath).Path
@@ -35,8 +36,7 @@ test -f .env || { echo 'Create .env with Oracle connection and Vercel origin fir
 test -f /opt/corpuslens/wallet/tnsnames.ora || { echo 'Install the wallet outside the repository first.' >&2; exit 1; }
 export DOMAIN='__DOMAIN__'
 docker compose -f docker-compose.oci.yml build
-# Fresh schema only; runbook explains existing database upgrades.
-docker compose -f docker-compose.oci.yml run --rm worker schema-migrate --ivf
+__MIGRATE__
 for lang in E S; do
   if test -f "/opt/corpuslens/snapshots/nwt_${lang}.snapshot.json"; then
     docker compose -f docker-compose.oci.yml run --rm worker revision-stage --lang "$lang"
@@ -46,6 +46,8 @@ done
 docker compose -f docker-compose.oci.yml up -d
 '@
     $run = $run.Replace('__DOMAIN__', $Domain)
+    $migration = if ($SkipMigration) { 'echo "Using previously migrated Oracle schema"' } else { 'docker compose -f docker-compose.oci.yml run --rm worker schema-migrate --ivf' }
+    $run = $run.Replace('__MIGRATE__', $migration)
     $run = $run.Replace("`r`n", "`n")
     $run | ssh -i $key $remote 'bash -s'
     if ($LASTEXITCODE -ne 0) { throw 'Remote build, migration, seed, or startup failed.' }
