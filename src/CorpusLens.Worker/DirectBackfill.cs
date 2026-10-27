@@ -59,8 +59,9 @@ public static class DirectBackfill
                 request.Content = new ByteArrayContent(payload);
                 request.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue("application/json");
                 using var response = await http.SendAsync(request);
-                if ((response.StatusCode == HttpStatusCode.TooManyRequests || (int)response.StatusCode >= 500) && attempt < 7)
+                if ((response.StatusCode is HttpStatusCode.TooManyRequests or HttpStatusCode.Forbidden || (int)response.StatusCode >= 500) && attempt < 7)
                 {
+                    Console.WriteLine($"{language}: embedding HTTP {(int)response.StatusCode}; retry {attempt + 1}/7");
                     await Task.Delay(TimeSpan.FromSeconds(Math.Min(60, Math.Pow(2, attempt))));
                     continue;
                 }
