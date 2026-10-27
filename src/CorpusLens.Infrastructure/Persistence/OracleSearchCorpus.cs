@@ -24,7 +24,7 @@ public sealed class OracleSearchCorpus : ISearchCorpus
     {
         using var connection = _connections(); connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT s.language,n.native_id,t.raw_text,d.title FROM text_span t JOIN document_node n ON n.id=t.node_id JOIN document d ON d.id=n.document_id JOIN source_revision r ON r.id=d.revision_id JOIN corpus_source s ON s.id=r.source_id WHERE r.status='Active' AND n.kind='verse'";
+        command.CommandText = "SELECT s.language,n.native_id,DBMS_LOB.SUBSTR(t.raw_text,1000,1),d.title FROM text_span t JOIN document_node n ON n.id=t.node_id JOIN document d ON d.id=n.document_id JOIN source_revision r ON r.id=d.revision_id JOIN corpus_source s ON s.id=r.source_id WHERE r.status='Active' AND n.kind='verse'";
         using var reader = command.ExecuteReader();
         var result = new Dictionary<string, Verse>();
         while (reader.Read())
