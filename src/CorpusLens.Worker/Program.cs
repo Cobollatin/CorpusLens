@@ -206,6 +206,43 @@ if (args.Length > 0 && args[0] == "phase6-index")
     return;
 }
 
+if (args.Length > 0 && args[0] == "phase6-array-probe")
+{
+    if (args.Length != 1 || Environment.GetEnvironmentVariable("CORPUSLENS_ALLOW_ORACLE_CONNECT") != "yes") throw new ArgumentException("Use phase6-array-probe with authorized Oracle access.");
+    var options = OracleDatabaseOptions.FromEnvironment();
+    await using var connection = new OracleConnection(options.ConnectionString);
+    await connection.OpenAsync();
+    string[] ids;
+    await using (var select = connection.CreateCommand())
+    {
+        select.CommandText = "SELECT id FROM search_chunk WHERE ROWNUM<=2";
+        await using var reader = await select.ExecuteReaderAsync();
+        var selected = new List<string>();
+        while (await reader.ReadAsync()) selected.Add(reader.GetString(0));
+        ids = selected.ToArray();
+    }
+    if (ids.Length != 2) throw new InvalidOperationException("Two chunks are required for the array probe.");
+    await using var transaction = await connection.BeginTransactionAsync();
+    try
+    {
+        await using var command = connection.CreateCommand();
+        command.BindByName = true;
+        command.ArrayBindCount = 2;
+        command.Transaction = transaction;
+        command.CommandText = "INSERT INTO chunk_embedding(chunk_id,model_id,embedding,token_count) VALUES(:chunk,:model,TO_VECTOR(:vector),:tokens)";
+        command.Parameters.Add("chunk", OracleDbType.Varchar2, ids, System.Data.ParameterDirection.Input);
+        command.Parameters.Add("model", OracleDbType.Varchar2, new[] { "text-embedding-3-large-1024", "text-embedding-3-large-1024" }, System.Data.ParameterDirection.Input);
+        var value = "[" + string.Join(',', Enumerable.Repeat("0.1", 1024)) + "]";
+        var vector = command.Parameters.Add("vector", OracleDbType.Clob, new[] { value, value }, System.Data.ParameterDirection.Input);
+        vector.ArrayBindSize = new[] { value.Length, value.Length };
+        command.Parameters.Add("tokens", OracleDbType.Int32, new[] { 1, 1 }, System.Data.ParameterDirection.Input);
+        await command.ExecuteNonQueryAsync();
+        Console.WriteLine("Oracle CLOB vector array binding succeeded; rolling back probe rows.");
+    }
+    finally { await transaction.RollbackAsync(); }
+    return;
+}
+
 if (args.Length > 0 && args[0] == "snapshot")
 {
     var languages = new List<string>();
