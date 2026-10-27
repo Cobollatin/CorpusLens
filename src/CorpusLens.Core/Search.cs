@@ -31,7 +31,7 @@ public sealed record SearchCandidate(string ChunkId, string Layer, IReadOnlyList
 public sealed record PassageVerse(string Id, int Number, string Text, bool IsPrimaryHighlight, string? JwLink, string? WolLink);
 public sealed record SearchResult(string Reference, string BookName, int Chapter, string? Section, double Score, double DenseRrf, double LexicalRrf, IReadOnlyList<string> Layers, IReadOnlyList<PassageVerse> Verses);
 public sealed record SearchResponse(IReadOnlyList<SearchResult> Results, Citation? Citation, bool DegradedToLexicalOnly, string CacheState, string CoverageStatus, string Mode);
-public sealed record HybridSearchOptions(double VectorWeight = 1, double LexicalWeight = 1, double LayerBoost = 0.05, int RrfK = 60);
+public sealed record HybridSearchOptions(double VectorWeight = 0.8, double LexicalWeight = 0.2, double LayerBoost = 0.05, int RrfK = 60, double CorroborationBoost = 0.04);
 
 public static class ReciprocalRankFusion
 {
@@ -84,7 +84,9 @@ public sealed class PassageDeduplicator
             var reference = $"{first.BookName} {first.Chapter}:{first.Number}" + (last.Number != first.Number ? $"-{last.Number}" : "");
             var boost = citation is not null && citation.VerseIds.Intersect(all).Any() ? 1.0 : 0;
             // Overlapping chunks describe the same passage; summing them rewards chunk count over relevance.
-            return new SearchResult(reference, first.BookName, first.Chapter, section, scores.Max(s => s.Total) + boost, scores.Max(s => s.Dense), scores.Max(s => s.Lexical), group.Select(g => g.Layer).Distinct().ToArray(), passage);
+            var layers = group.Select(g => g.Layer).Distinct().ToArray();
+            var corroboration = layers.Count(l => l != "PericopeSection") >= 2 ? options.CorroborationBoost : 0;
+            return new SearchResult(reference, first.BookName, first.Chapter, section, scores.Max(s => s.Total) * (1 + corroboration) + boost, scores.Max(s => s.Dense), scores.Max(s => s.Lexical), layers, passage);
         }).OrderByDescending(r => r.Score).Take(limit).ToArray();
     }
 }

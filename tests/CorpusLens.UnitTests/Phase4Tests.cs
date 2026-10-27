@@ -79,7 +79,40 @@ public class Phase4Tests
     }
     [Fact] public void OracleTextQueryEscapesOperators()
     {
-        Assert.Equal("{love} OR {peace}", CorpusLens.Infrastructure.Persistence.OracleSearchRepository.EscapeTextQuery("love & peace"));
+        Assert.Equal("{love} ACCUM {peace}", CorpusLens.Infrastructure.Persistence.OracleSearchRepository.EscapeTextQuery("love & peace"));
+    }
+    [Theory]
+    [InlineData("cómo lidiar con la ansiedad por el dinero", "S", "{lidiar} ACCUM {ansiedad} ACCUM {dinero}")]
+    [InlineData("how to deal with anxiety about money", "E", "{deal} ACCUM {anxiety} ACCUM {money}")]
+    [InlineData("Juan 3:16", "S", "{juan} ACCUM {3} ACCUM {16}")]
+    public void LexicalQueriesRemoveStopwords(string query, string language, string expected)
+    {
+        Assert.Equal(expected, LexicalQuery.OracleText(query, language));
+    }
+    [Fact] public void SingleContentTermMatchHasReducedLexicalWeight()
+    {
+        var terms = LexicalQuery.Terms("cómo lidiar con la ansiedad por el dinero", "S");
+        Assert.Equal(.25, LexicalQuery.CoverageWeight(terms, new Dictionary<string, int> { ["dinero"] = 3 }));
+        Assert.Equal(1, LexicalQuery.CoverageWeight(terms, new Dictionary<string, int> { ["ansiedad"] = 1, ["dinero"] = 1 }));
+    }
+    [Fact] public void VectorWeightOutweighsSingleLexicalHit()
+    {
+        var options = new HybridSearchOptions();
+        var vector = ReciprocalRankFusion.Score(new SearchCandidate("v", "SingleVerse", ["40006025"], null, null, 10, null), options);
+        var lexical = ReciprocalRankFusion.Score(new SearchCandidate("l", "SingleVerse", ["20015016"], null, null, null, 1), options);
+        Assert.True(vector.Total > lexical.Total);
+    }
+    [Fact] public void CitationAlwaysRanksFirst()
+    {
+        var ids = new[] { "43003016", "43003017" };
+        var verses = ids.ToDictionary(id => id, id => new Verse(43, 3, int.Parse(id[5..]), "text", "John", id));
+        var hits = new[]
+        {
+            new SearchCandidate("unrelated", "SingleVerse", [ids[1]], null, null, 1, 1),
+            new SearchCandidate("citation", "SingleVerse", [ids[0]], null, 1, null, 1)
+        };
+        var result = new PassageDeduplicator().Build(hits, verses, [], "E", new(), new Citation(43, 3, 16, 16, "john"), 2);
+        Assert.Equal(ids[0], result[0].Verses[0].Id);
     }
     [Fact] public async Task ApiEndpoints()
     {

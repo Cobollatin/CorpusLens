@@ -72,7 +72,8 @@ public sealed class LocalSnapshotSearchCorpus : ISearchCorpus
         {
             if (!_counts.TryGetValue(lang, out var count)) continue;
             var avg = (double)_lengths[lang] / count;
-            foreach (var token in Tokenize(query).Distinct())
+            var queryTerms = LexicalQuery.Terms(query, lang);
+            foreach (var token in queryTerms)
             {
                 if (!_postings.TryGetValue(lang + ":" + token, out var posting)) continue;
                 var idf = Math.Log(1 + (count - posting.Count + .5) / (posting.Count + .5));
@@ -85,11 +86,16 @@ public sealed class LocalSnapshotSearchCorpus : ISearchCorpus
                 }
             }
         }
-        var lexical = mode == "Semantic" ? [] : results.Values.OrderByDescending(x => x.Score).Take(50).Select((x, i) => new SearchCandidate(x.Doc.Id, x.Doc.Layer, x.Doc.VerseIds, null, x.Score, null, i + 1, x.Doc.Language)).ToArray();
+        var termsByLanguage = (language == "All" ? new[] { "E", "S" } : new[] { language })
+            .ToDictionary(lang => lang, lang => LexicalQuery.Terms(query, lang));
+        var lexical = mode == "Semantic" ? [] : results.Values
+            .Select(x => (x.Doc, Score: x.Score * LexicalQuery.CoverageWeight(termsByLanguage[x.Doc.Language], x.Doc.Terms)))
+            .OrderByDescending(x => x.Score).Take(150)
+            .Select((x, i) => new SearchCandidate(x.Doc.Id, x.Doc.Layer, x.Doc.VerseIds, null, x.Score, null, i + 1, x.Doc.Language)).ToArray();
         if (vector is null || mode == "Lexical") return lexical;
         var dense = (language == "All" ? new[] { "E", "S" } : new[] { language }).Where(_documents.ContainsKey).SelectMany(lang => _documents[lang])
             .Where(doc => _vectors.ContainsKey(doc.Id)).Select(doc => (Doc: doc, Score: Cosine(vector, _vectors[doc.Id])))
-            .OrderByDescending(x => x.Score).Take(50).ToArray();
+            .OrderByDescending(x => x.Score).Take(150).ToArray();
         var merged = lexical.ToDictionary(x => x.ChunkId);
         for (var i = 0; i < dense.Length; i++)
         {
@@ -208,7 +214,7 @@ public sealed class HybridSearchService(ISearchCorpus corpus, QueryNormalizer no
             var ids = citation.VerseIds.Where(id => corpus.Verses.ContainsKey(lang + ":" + id)).ToArray();
             if (ids.Length > 0) candidates = [new SearchCandidate("citation:" + lang + ids[0], "SingleVerse", ids, null, 1, null, 1, lang), .. candidates];
         }
-        var reranked = await reranker.RerankAsync(query, candidates.Take(40).ToArray(), token);
+        var reranked = await reranker.RerankAsync(query, candidates.Take(200).ToArray(), token);
         var results = new[] { lang }.SelectMany(selectedLanguage =>
         {
             var verseMap = corpus.Verses.Where(k => k.Key.StartsWith(selectedLanguage + ":")).ToDictionary(k => k.Key[2..], v => v.Value);

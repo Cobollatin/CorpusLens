@@ -40,7 +40,7 @@ public static class InfrastructureServices
         services.AddSingleton<CitationQueryParser>();
         services.AddSingleton<PassageDeduplicator>();
         services.AddSingleton<IReranker, NoOpReranker>();
-        services.AddSingleton(new HybridSearchOptions(config.GetValue("Search:VectorWeight", 1.0), config.GetValue("Search:LexicalWeight", 1.0), config.GetValue("Search:LayerBoost", .05)));
+        services.AddSingleton(new HybridSearchOptions(config.GetValue("Search:VectorWeight", .8), config.GetValue("Search:LexicalWeight", .2), config.GetValue("Search:LayerBoost", .05), config.GetValue("Search:RrfK", 60), config.GetValue("Search:CorroborationBoost", .04)));
         services.AddSingleton(_ => new OpenAiSpendGuard { LedgerPath = Path.Combine(config["Corpus:StatePath"] ?? Path.Combine(NwtEpubCorpusAdapter.FindRepositoryRoot(), "data", "spend"), "openai-queries.json") });
         if (!string.IsNullOrWhiteSpace(connection)) services.AddSingleton<IQueryEmbeddingCacheRepository, OracleQueryEmbeddingCacheRepository>();
         else services.AddSingleton<IQueryEmbeddingCacheRepository, NullQueryEmbeddingCacheRepository>();

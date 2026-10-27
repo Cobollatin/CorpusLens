@@ -44,7 +44,7 @@ public sealed class OracleSearchCorpus : ISearchCorpus
     }
     public IReadOnlyList<SearchCandidate> Retrieve(string query, string language, string? edition, float[]? vector, string mode)
     {
-        var hits = _repository.SearchAsync(new SearchRequest(query, language, edition, 50), mode == "Lexical" ? null : vector, CancellationToken.None).GetAwaiter().GetResult();
+        var hits = _repository.SearchAsync(new SearchRequest(query, language, edition, 200), mode == "Lexical" ? null : vector, CancellationToken.None).GetAwaiter().GetResult();
         return hits.Select(hit => new SearchCandidate(hit.ChunkId, hit.Layer, hit.VerseIds, null, null, null, null, hit.Language, hit.Score, hit.DenseRrf, hit.LexicalRrf)).ToArray();
     }
 }

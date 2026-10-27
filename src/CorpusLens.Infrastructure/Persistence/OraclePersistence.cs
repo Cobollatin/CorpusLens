@@ -186,12 +186,7 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
 
 public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory, HybridSearchOptions? options = null) : ISearchRepository
 {
-    public static string EscapeTextQuery(string query)
-    {
-        var terms = System.Text.RegularExpressions.Regex.Matches(query, @"[\p{L}\p{N}]+")
-            .Select(m => "{" + m.Value.Replace("}", "") + "}").Take(32).ToArray();
-        return terms.Length == 0 ? "{zzzzzzzz}" : string.Join(" OR ", terms);
-    }
+    public static string EscapeTextQuery(string query, string language = "E") => LexicalQuery.OracleText(query, language);
     public async Task<IReadOnlyList<SearchHit>> SearchAsync(SearchRequest request, float[]? queryVector, CancellationToken cancellationToken)
     {
         await using var connection = connectionFactory();
@@ -200,21 +195,22 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
         if (command is OracleCommand oracleCommand) oracleCommand.BindByName = true;
         // Each branch is independently bounded and ranked under identical active-revision filters.
         command.CommandText = """
-            WITH text_ranked AS (
-              SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
+            WITH text_top AS (
+              SELECT c.id, SCORE(1) text_score
               FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
               WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
-            ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50),
+              ORDER BY SCORE(1) DESC,c.id FETCH FIRST 150 ROWS ONLY
+            ), text_hits AS (SELECT id,ROW_NUMBER() OVER (ORDER BY text_score DESC,id) rank_no FROM text_top),
             vector_ranked AS (
               SELECT c.id, ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(e.embedding,TO_VECTOR(:vector),COSINE),c.id) rank_no
               FROM search_chunk c JOIN chunk_embedding e ON e.chunk_id=c.id
               JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
               WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND :vector IS NOT NULL
-            ), vector_hits AS (SELECT id,rank_no FROM vector_ranked WHERE rank_no<=50),
+            ), vector_hits AS (SELECT id,rank_no FROM vector_ranked WHERE rank_no<=150),
             fused AS (
               SELECT id,SUM(score) fused_score,SUM(CASE WHEN branch='dense' THEN score ELSE 0 END) dense_score,SUM(CASE WHEN branch='lexical' THEN score ELSE 0 END) lexical_score FROM (
-                SELECT id,:lexical_weight/(60+rank_no) score,'lexical' branch FROM text_hits UNION ALL
-                SELECT id,:vector_weight/(60+rank_no) score,'dense' branch FROM vector_hits
+                SELECT id,:lexical_weight/(:rrf_k+rank_no) score,'lexical' branch FROM text_hits UNION ALL
+                SELECT id,:vector_weight/(:rrf_k+rank_no) score,'dense' branch FROM vector_hits
               ) GROUP BY id
             ) SELECT c.id,c.raw_text,CAST(f.fused_score*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),c.layer,s.language,CAST(f.dense_score AS BINARY_DOUBLE),CAST(f.lexical_score AS BINARY_DOUBLE)
             FROM fused f JOIN search_chunk c ON c.id=f.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
@@ -222,19 +218,20 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
             """;
         if (queryVector is null)
             command.CommandText = """
-                WITH text_ranked AS (
-                  SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
+                WITH text_top AS (
+                  SELECT c.id, SCORE(1) text_score
                   FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
                   WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
-                ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50)
-                SELECT c.id,c.raw_text,CAST(:lexical_weight/(60+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),
-                  c.layer,s.language,CAST(0 AS BINARY_DOUBLE),CAST(:lexical_weight/(60+t.rank_no) AS BINARY_DOUBLE)
+                  ORDER BY SCORE(1) DESC,c.id FETCH FIRST 150 ROWS ONLY
+                ), text_hits AS (SELECT id,ROW_NUMBER() OVER (ORDER BY text_score DESC,id) rank_no FROM text_top)
+                SELECT c.id,c.raw_text,CAST(:lexical_weight/(:rrf_k+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),
+                  c.layer,s.language,CAST(0 AS BINARY_DOUBLE),CAST(:lexical_weight/(:rrf_k+t.rank_no) AS BINARY_DOUBLE)
                 FROM text_hits t JOIN search_chunk c ON c.id=t.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
                 ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
                 """;
         OracleCorpusRepository.Add(command, "language", request.Language);
         OracleCorpusRepository.Add(command, "edition", request.Edition is null ? DBNull.Value : request.Edition);
-        OracleCorpusRepository.Add(command, "query", EscapeTextQuery(request.Query));
+        OracleCorpusRepository.Add(command, "query", EscapeTextQuery(request.Query, request.Language));
         if (queryVector is not null)
         {
             var serialized = "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]";
@@ -243,7 +240,8 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
         OracleCorpusRepository.Add(command, "lexical_weight", (options ?? new()).LexicalWeight);
         if (queryVector is not null) OracleCorpusRepository.Add(command, "vector_weight", (options ?? new()).VectorWeight);
         OracleCorpusRepository.Add(command, "layer_boost", (options ?? new()).LayerBoost);
-        OracleCorpusRepository.Add(command, "limit", Math.Clamp(request.Limit, 1, 50));
+        OracleCorpusRepository.Add(command, "rrf_k", (options ?? new()).RrfK);
+        OracleCorpusRepository.Add(command, "limit", Math.Clamp(request.Limit, 1, 200));
         var hits = new List<SearchHit>();
         await using var reader = await command.ExecuteReaderAsync(cancellationToken);
         while (await reader.ReadAsync(cancellationToken)) hits.Add(new SearchHit(reader.GetString(0), reader.GetString(1), Convert.ToDouble(reader.GetValue(2)), [], reader.GetString(3), reader.GetString(4), Convert.ToDouble(reader.GetValue(5)), Convert.ToDouble(reader.GetValue(6))));
