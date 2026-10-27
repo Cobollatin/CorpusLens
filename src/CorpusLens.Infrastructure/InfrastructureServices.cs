@@ -106,7 +106,7 @@ public sealed class OpenAiEmbeddingClient(HttpClient http, IConfiguration config
     public const int Dimensions = 1024;
     private HttpRequestMessage NewRequest(HttpMethod method, string uri)
     {
-        var key = config["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey is required at runtime.");
+        var key = config["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY") ?? throw new InvalidOperationException("OPENAI_API_KEY is required at runtime.");
         var request = new HttpRequestMessage(method, uri);
         request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", key);
         return request;

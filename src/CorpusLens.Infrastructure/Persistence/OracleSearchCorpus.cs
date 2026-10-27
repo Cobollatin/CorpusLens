@@ -39,8 +39,8 @@ public sealed class OracleSearchCorpus : ISearchCorpus
     {
         using var connection = _connections(); connection.Open();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM chunk_embedding e JOIN search_chunk c ON c.id=e.chunk_id JOIN source_revision r ON r.id=c.revision_id WHERE r.status='Active' AND ROWNUM=1";
-        return Convert.ToInt32(command.ExecuteScalar()) > 0;
+        command.CommandText = "SELECT CASE WHEN COUNT(DISTINCT s.language)=2 AND MIN(CASE WHEN counts.chunks=counts.embeddings AND counts.chunks>0 THEN 1 ELSE 0 END)=1 THEN 1 ELSE 0 END FROM (SELECT r.id,COUNT(c.id) chunks,COUNT(e.chunk_id) embeddings FROM source_revision r JOIN search_chunk c ON c.revision_id=r.id LEFT JOIN chunk_embedding e ON e.chunk_id=c.id WHERE r.status='Active' GROUP BY r.id) counts JOIN source_revision r ON r.id=counts.id JOIN corpus_source s ON s.id=r.source_id";
+        return Convert.ToInt32(command.ExecuteScalar()) == 1;
     }
     public IReadOnlyList<SearchCandidate> Retrieve(string query, string language, string? edition, float[]? vector, string mode)
     {

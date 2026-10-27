@@ -93,6 +93,10 @@ public class Phase4Tests
         var body = await response.Content.ReadFromJsonAsync<System.Text.Json.JsonElement>();
         Assert.True(body.GetProperty("degradedToLexicalOnly").GetBoolean());
         Assert.Contains("43003016", body.ToString());
+        var all = await client.PostAsJsonAsync("/api/v1/search", new SearchQuery("John 3:16", "All", null));
+        Assert.Equal(HttpStatusCode.BadRequest, all.StatusCode);
+        var missing = await client.PostAsJsonAsync("/api/v1/search", new { query = "John 3:16", limit = 10 });
+        Assert.Equal(HttpStatusCode.BadRequest, missing.StatusCode);
     }
     private static IConfiguration Config() => new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["OpenAI:EnableLiveEmbeddings"] = "true", ["OpenAI:ApiKey"] = "test-not-sent" }).Build();
     private sealed class FakeCache : IQueryEmbeddingCacheRepository

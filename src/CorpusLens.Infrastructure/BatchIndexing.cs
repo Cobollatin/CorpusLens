@@ -108,6 +108,10 @@ public sealed class OpenAiBatchEmbeddingService(HttpClient http)
         using var response = await SendAsync(HttpMethod.Get, "files/" + Uri.EscapeDataString(fileId) + "/content", apiKey, null, token);
         return await response.Content.ReadAsStringAsync(token);
     }
+    public async Task CancelAsync(string batchId, string apiKey, CancellationToken token)
+    {
+        using var response = await SendAsync(HttpMethod.Post, "batches/" + Uri.EscapeDataString(batchId) + "/cancel", apiKey, null, token);
+    }
     private async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, string key, HttpContent? content, CancellationToken token)
     {
         var payload = content is null ? null : await content.ReadAsByteArrayAsync(token);

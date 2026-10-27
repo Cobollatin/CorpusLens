@@ -16,6 +16,8 @@ services:
       CORPUSLENS_REPOSITORY_ROOT: /app
       Cors__AllowedOrigins__0: ${VERCEL_ORIGIN:?Set exact Vercel origin}
       Cors__AllowedOrigins__1: https://corpuslens.vercel.app
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OpenAI__EnableLiveEmbeddings: "true"
     volumes:
       - ${SNAPSHOT_PATH:?Set snapshot directory}:/app/snapshots:ro
       - api_state:/app/state
@@ -32,12 +34,15 @@ services:
       CORPUSLENS_ORACLE_CONNECTION_STRING: ${CORPUSLENS_ORACLE_CONNECTION_STRING:-}
       CORPUSLENS_ORACLE_WALLET_PATH: /run/oracle-wallet
       CORPUSLENS_ALLOW_ORACLE_CONNECT: "yes"
+      CORPUSLENS_ALLOW_BATCH_SUBMIT: "yes"
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       TNS_ADMIN: /run/oracle-wallet
       Corpus__SnapshotPath: /app/snapshots
       CORPUSLENS_REPOSITORY_ROOT: /app
     volumes:
       - ${SNAPSHOT_PATH}:/app/snapshots:ro
       - ${WALLET_PATH}:/run/oracle-wallet:ro
+      - /opt/corpuslens/batch:/app/data/batch
   caddy:
     image: caddy:2
     restart: unless-stopped

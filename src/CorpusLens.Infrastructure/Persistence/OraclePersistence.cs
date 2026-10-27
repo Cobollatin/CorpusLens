@@ -199,13 +199,13 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
             WITH text_ranked AS (
               SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
               FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
-              WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
+              WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
             ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50),
             vector_ranked AS (
               SELECT c.id, ROW_NUMBER() OVER (ORDER BY VECTOR_DISTANCE(e.embedding,TO_VECTOR(:vector),COSINE),c.id) rank_no
               FROM search_chunk c JOIN chunk_embedding e ON e.chunk_id=c.id
               JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
-              WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND :vector IS NOT NULL
+              WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND :vector IS NOT NULL
             ), vector_hits AS (SELECT id,rank_no FROM vector_ranked WHERE rank_no<=50),
             fused AS (
               SELECT id,SUM(score) fused_score,SUM(CASE WHEN branch='dense' THEN score ELSE 0 END) dense_score,SUM(CASE WHEN branch='lexical' THEN score ELSE 0 END) lexical_score FROM (
@@ -221,7 +221,7 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
                 WITH text_ranked AS (
                   SELECT c.id, ROW_NUMBER() OVER (ORDER BY SCORE(1) DESC,c.id) rank_no
                   FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
-                  WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
+                  WHERE r.status='Active' AND s.language=:language AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
                 ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50)
                 SELECT c.id,c.raw_text,CAST(:lexical_weight/(60+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),
                   c.layer,s.language,CAST(0 AS BINARY_DOUBLE),CAST(:lexical_weight/(60+t.rank_no) AS BINARY_DOUBLE)

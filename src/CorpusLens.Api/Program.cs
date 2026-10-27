@@ -16,7 +16,7 @@ builder.Services.AddRateLimiter(options =>
 var app = builder.Build();
 app.UseCors("frontend");
 app.UseRateLimiter();
-app.MapGet("/api/v1/health", (ISearchCorpus corpus) => Results.Ok(new { status = "ok", phase = 5, coverage = corpus.CoverageStatus, embeddingsPopulated = corpus.EmbeddingsPopulated, phase6BackfillPending = !corpus.EmbeddingsPopulated }));
+app.MapGet("/api/v1/health", (ISearchCorpus corpus) => Results.Ok(new { status = "ok", phase = corpus.EmbeddingsPopulated ? 6 : 5, coverage = corpus.CoverageStatus, embeddingsPopulated = corpus.EmbeddingsPopulated, phase6BackfillPending = !corpus.EmbeddingsPopulated }));
 app.MapGet("/api/v1/corpora", (ISearchCorpus corpus) => Results.Ok(new[] { new { language = "E", edition = "English NWT", available = corpus.Verses.Keys.Any(k => k.StartsWith("E:")), embeddingsPopulated = corpus.EmbeddingsPopulated, phase6BackfillPending = !corpus.EmbeddingsPopulated }, new { language = "S", edition = "Español TNM", available = corpus.Verses.Keys.Any(k => k.StartsWith("S:")), embeddingsPopulated = corpus.EmbeddingsPopulated, phase6BackfillPending = !corpus.EmbeddingsPopulated } }));
 app.MapGet("/api/v1/chapters/{lang}/{book:int}/{chapter:int}", (string lang, int book, int chapter, ISearchCorpus corpus) =>
 {

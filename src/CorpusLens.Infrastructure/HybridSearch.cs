@@ -174,7 +174,7 @@ public sealed class CachedQueryEmbeddingService(QueryNormalizer normalizer, Quer
         if (memory.TryGet(key, out var l1)) return new(l1, "L1 hit", false);
         var l2 = await database.GetAsync(key, token);
         if (l2 is not null) { memory.Put(key, l2); return new(l2, "L2 hit", false); }
-        if (!config.GetValue("OpenAI:EnableLiveEmbeddings", false) || string.IsNullOrWhiteSpace(config["OpenAI:ApiKey"])) return new(null, "embeddings unavailable", true);
+        if (!config.GetValue("OpenAI:EnableLiveEmbeddings", false) || string.IsNullOrWhiteSpace(config["OpenAI:ApiKey"] ?? Environment.GetEnvironmentVariable("OPENAI_API_KEY"))) return new(null, "embeddings unavailable", true);
         var estimate = Math.Max(1, query.Length) * .13m / 1_000_000m;
         bool reserved;
         try { reserved = guard.TryReserve(estimate, DateTimeOffset.UtcNow); }
@@ -195,8 +195,8 @@ public sealed class HybridSearchService(ISearchCorpus corpus, QueryNormalizer no
 {
     public async Task<SearchResponse> SearchAsync(SearchRequest request, CancellationToken token = default)
     {
-        var lang = request.Language is "E" or "S" or "All" ? request.Language : throw new ArgumentException("Language must be E, S, or All.");
-        var query = normalizer.Normalize(request.Query, lang == "All" ? "en" : lang == "S" ? "es" : "en");
+        var lang = request.Language is "E" or "S" ? request.Language : throw new ArgumentException("Language must be E or S.");
+        var query = normalizer.Normalize(request.Query, lang == "S" ? "es" : "en");
         var citation = citations.Parse(query);
         var mode = request is SearchQuery q && q.Mode is "Lexical" or "Semantic" or "Hybrid" ? q.Mode : "Hybrid";
         QueryEmbeddingResult embedding = mode == "Lexical" ? new(null, "lexical mode", false)
@@ -205,11 +205,11 @@ public sealed class HybridSearchService(ISearchCorpus corpus, QueryNormalizer no
         var candidates = corpus.Retrieve(query, lang, request.Edition, embedding.Vector, embedding.Degraded ? "Lexical" : mode);
         if (citation is not null && (corpus is not LocalSnapshotSearchCorpus || request.Edition is null or "New World Translation"))
         {
-            var ids = citation.VerseIds.Where(id => corpus.Verses.ContainsKey(lang + ":" + id) || (lang == "All" && (corpus.Verses.ContainsKey("E:" + id) || corpus.Verses.ContainsKey("S:" + id)))).ToArray();
-            if (ids.Length > 0) candidates = [.. (lang == "All" ? new[] { "E", "S" } : new[] { lang }).Select(l => new SearchCandidate("citation:" + l + ids[0], "SingleVerse", ids, null, 1, null, 1, l)), .. candidates];
+            var ids = citation.VerseIds.Where(id => corpus.Verses.ContainsKey(lang + ":" + id)).ToArray();
+            if (ids.Length > 0) candidates = [new SearchCandidate("citation:" + lang + ids[0], "SingleVerse", ids, null, 1, null, 1, lang), .. candidates];
         }
         var reranked = await reranker.RerankAsync(query, candidates.Take(40).ToArray(), token);
-        var results = (lang == "All" ? new[] { "E", "S" } : new[] { lang }).SelectMany(selectedLanguage =>
+        var results = new[] { lang }.SelectMany(selectedLanguage =>
         {
             var verseMap = corpus.Verses.Where(k => k.Key.StartsWith(selectedLanguage + ":")).ToDictionary(k => k.Key[2..], v => v.Value);
             return deduplicator.Build(reranked.Where(c => c.Language == selectedLanguage).ToArray(), verseMap, corpus.Pericopes, selectedLanguage, options, citation, Math.Clamp(request.Limit, 1, 50));

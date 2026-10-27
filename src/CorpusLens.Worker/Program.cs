@@ -49,7 +49,7 @@ if (args.Length > 0 && args[0] == "batch-export")
     Console.WriteLine($"{args[2]}: {shards.Count} shards, {shards.Sum(s => s.Requests)} requests, {shards.Sum(s => s.EstimatedTokens)} estimated tokens, ${shards.Sum(s => s.EstimatedCostUsd):F4}");
     return;
 }
-if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-import")
+if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-cancel" or "batch-import")
 {
     if (args.Length < 3 || args[1] != "--lang" || args[2] is not ("E" or "S")) throw new ArgumentException("Use batch-submit|batch-status|batch-import --lang E|S [--output result.jsonl].");
     var root = NwtEpubCorpusAdapter.FindRepositoryRoot();
@@ -101,19 +101,29 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-imp
         }
         await SaveJobs();
     }
+    else if (args[0] == "batch-cancel")
+    {
+        if (string.IsNullOrWhiteSpace(key)) throw new InvalidOperationException("OPENAI_API_KEY is required in the environment.");
+        for (var i = 0; i < jobs.Count; i++)
+        {
+            if (jobs[i].BatchId is null || jobs[i].State is "completed" or "cancelled" or "failed" or "expired") continue;
+            await service.CancelAsync(jobs[i].BatchId!, key, CancellationToken.None);
+            jobs[i] = jobs[i] with { State = "cancelling" };
+            Console.WriteLine($"{jobs[i].BatchId}: cancelling");
+        }
+        await SaveJobs();
+    }
     else
     {
-        if (args.Length != 5 || args[3] != "--output") throw new ArgumentException("Use batch-import --lang E|S --output local-results.jsonl.");
+        if (args.Length != 4 || args[3] != "--download") throw new ArgumentException("Use batch-import --lang E|S --download.");
         if (jobs.Count == 0 || jobs.Any(j => j.State != "completed")) throw new InvalidOperationException("Every shard must have a completed ingest job.");
-        var lines = await File.ReadAllLinesAsync(args[4]);
+        if (string.IsNullOrWhiteSpace(key) || jobs.Any(j => j.OutputFileId is null)) throw new InvalidOperationException("Completed Batch outputs are required.");
+        var lines = new List<string>();
+        foreach (var job in jobs) lines.AddRange((await service.DownloadAsync(job.OutputFileId!, key, CancellationToken.None)).Split('\n'));
         var imported = new BatchOutputImporter().Parse(revision, "text-embedding-3-large-1024", snapshot.Chunks, lines);
         var options = OracleDatabaseOptions.FromEnvironment();
         var repository = new OracleCorpusRepository(() => new OracleConnection(options.ConnectionString));
-        await repository.SetRevisionStatusAsync(revision, "Audited", "Indexing", CancellationToken.None);
         await repository.BulkInsertEmbeddingsAsync("text-embedding-3-large-1024", imported, CancellationToken.None);
-        await repository.SetRevisionStatusAsync(revision, "Indexing", "Ready", CancellationToken.None);
-        await new RevisionSwitchoverService(new OracleRevisionStore(() => new OracleConnection(options.ConnectionString)))
-            .ActivateAsync(revision, snapshot.Audit, new EmbeddingCompletenessAudit(true, snapshot.Chunks.Count, imported.Count));
         for (var i = 0; i < jobs.Count; i++) jobs[i] = jobs[i] with { State = "imported" };
         await SaveJobs();
         Console.WriteLine($"Imported {imported.Count} complete vectors for {language}; provider reported {imported.Sum(e => (long)e.TokenCount)} input tokens.");
