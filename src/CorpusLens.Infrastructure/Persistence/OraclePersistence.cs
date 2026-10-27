@@ -212,7 +212,7 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
                 SELECT id,:lexical_weight/(60+rank_no) score,'lexical' branch FROM text_hits UNION ALL
                 SELECT id,:vector_weight/(60+rank_no) score,'dense' branch FROM vector_hits
               ) GROUP BY id
-            ) SELECT c.id,c.raw_text,f.fused_score*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END),c.layer,s.language,f.dense_score,f.lexical_score
+            ) SELECT c.id,c.raw_text,CAST(f.fused_score*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),c.layer,s.language,CAST(f.dense_score AS BINARY_DOUBLE),CAST(f.lexical_score AS BINARY_DOUBLE)
             FROM fused f JOIN search_chunk c ON c.id=f.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
             ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
             """;
@@ -223,8 +223,8 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
                   FROM search_chunk c JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
                   WHERE r.status='Active' AND (:language='All' OR s.language=:language) AND (:edition IS NULL OR s.edition=:edition) AND CONTAINS(c.raw_text,:query,1)>0
                 ), text_hits AS (SELECT id,rank_no FROM text_ranked WHERE rank_no<=50)
-                SELECT c.id,c.raw_text,:lexical_weight/(60+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END),
-                  c.layer,s.language,0,:lexical_weight/(60+t.rank_no)
+                SELECT c.id,c.raw_text,CAST(:lexical_weight/(60+t.rank_no)*(CASE WHEN c.layer='SingleVerse' THEN 1+:layer_boost ELSE 1 END) AS BINARY_DOUBLE),
+                  c.layer,s.language,CAST(0 AS BINARY_DOUBLE),CAST(:lexical_weight/(60+t.rank_no) AS BINARY_DOUBLE)
                 FROM text_hits t JOIN search_chunk c ON c.id=t.id JOIN source_revision r ON r.id=c.revision_id JOIN corpus_source s ON s.id=r.source_id
                 ORDER BY 3 DESC FETCH FIRST :limit ROWS ONLY
                 """;
