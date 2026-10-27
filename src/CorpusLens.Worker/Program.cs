@@ -100,7 +100,8 @@ if (args.Length > 0 && args[0] is "batch-submit" or "batch-status" or "batch-can
             var state = status.RootElement.GetProperty("status").GetString()!;
             var outputId = status.RootElement.TryGetProperty("output_file_id", out var output) && output.ValueKind == JsonValueKind.String ? output.GetString() : null;
             jobs[i] = jobs[i] with { State = state, OutputFileId = outputId };
-            Console.WriteLine($"{jobs[i].BatchId}: {state}");
+            var counts = status.RootElement.GetProperty("request_counts");
+            Console.WriteLine($"{jobs[i].BatchId}: {state}, {counts.GetProperty("completed").GetInt32()}/{counts.GetProperty("total").GetInt32()} completed, {counts.GetProperty("failed").GetInt32()} failed");
         }
         await SaveJobs();
     }
