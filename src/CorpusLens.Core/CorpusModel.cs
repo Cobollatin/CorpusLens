@@ -15,7 +15,7 @@ public record SourceRevision(string Id, string SourceId, string ArtifactSha256, 
 public record Document(string Id, string RevisionId, string NativeId, string Title, string Language);
 public record DocumentNode(string Id, string DocumentId, string? ParentId, string Kind, string NativeId, string? AttributesJson);
 public record TextSpan(string Id, string NodeId, string Text, string Sha256, string? SourceLocator);
-public record SearchChunk(string Id, string RevisionId, string Layer, string EmbeddingInput, string InputSha256, IReadOnlyList<ChunkSegment> Segments);
+public record SearchChunk(string Id, string RevisionId, string Layer, string EmbeddingInput, string InputSha256, IReadOnlyList<ChunkSegment> Segments, string? ContextHeader = null);
 public record ChunkSegment(string ChunkId, string TextSpanId, int Start, int End);
 public record EmbeddingModel(string Id, string Provider, string Name, int Dimensions, string NormalizationVersion);
 public record ChunkEmbedding(string ChunkId, string ModelId, float[] Vector, int TokenCount);
@@ -45,6 +45,22 @@ public record BibleLinkConfig(string JwLocale, string WolLanguage, string WolLib
 
 public static class BibleLinks
 {
+    public static readonly IReadOnlyDictionary<string, BibleLinkConfig> NwtLocales = new Dictionary<string, BibleLinkConfig>
+    {
+        ["E"] = new("E", "en", "r1/lp-e", "nwtsty"),
+        ["S"] = new("S", "es", "r4/lp-s", "nwtsty")
+    };
+    public static (string Jw, string Wol) ForVerse(int book, int chapter, int verse, string language, IReadOnlyDictionary<string, BibleLinkConfig>? locales = null)
+        => ForVerse(book, chapter, verse, (locales ?? NwtLocales)[language])!.Value;
+    public static (string Jw, string Wol) ForRange(int startBook, int startChapter, int startVerse, int endBook, int endChapter, int endVerse, string language, IReadOnlyDictionary<string, BibleLinkConfig>? locales = null)
+    {
+        var start = BibleVerseId.Format(startBook, startChapter, startVerse);
+        var end = BibleVerseId.Format(endBook, endChapter, endVerse);
+        if (string.CompareOrdinal(start, end) > 0) throw new ArgumentException("Range end precedes start.");
+        var config = (locales ?? NwtLocales)[language];
+        return ($"https://www.jw.org/finder?wtlocale={Uri.EscapeDataString(config.JwLocale)}&bible={start}-{end}&pub={Uri.EscapeDataString(config.Publication)}",
+            $"https://wol.jw.org/{Uri.EscapeDataString(config.WolLanguage)}/wol/b/{config.WolLibrary}/{Uri.EscapeDataString(config.Publication)}/{startBook}/{startChapter}#v={startBook}:{startChapter}:{startVerse}-{endBook}:{endChapter}:{endVerse}");
+    }
     public static (string Jw, string Wol)? ForVerse(int book, int chapter, int verse, BibleLinkConfig? config)
     {
         if (config is null) return null;
@@ -56,7 +72,7 @@ public static class BibleLinks
 
 public record SourceArtifact(string Uri, string Sha256, string Language, string Edition);
 public record SourceFetchResult(Stream Content, SourceArtifact Artifact);
-public record ParseResult(IReadOnlyList<Verse> Verses, IReadOnlyList<Pericope> Pericopes, IReadOnlyList<string> Errors);
+public record ParseResult(IReadOnlyList<Verse> Verses, IReadOnlyList<Pericope> Pericopes, IReadOnlyList<string> Errors, IReadOnlyList<string>? ExpectedVerseIds = null);
 public interface ICorpusSourceAdapter
 {
     Task<IReadOnlyList<SourceArtifact>> DiscoverAsync(CancellationToken cancellationToken);

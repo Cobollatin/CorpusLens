@@ -3,6 +3,8 @@
 **/node_modules/
 **/dist/
 .ralph/
+data/raw/
+data/snapshots/
 .env*
 *.secret*
 *secrets*.json

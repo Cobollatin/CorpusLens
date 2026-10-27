@@ -22,6 +22,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\CorpusLens.Core\CorpusLens.Core.csproj" />
+    <ProjectReference Include="..\..\src\CorpusLens.Infrastructure\CorpusLens.Infrastructure.csproj" />
   </ItemGroup>
 
 </Project>

@@ -20,18 +20,11 @@ public static class InfrastructureServices
         services.AddHttpClient<IEmbeddingBatchClient, OpenAiEmbeddingClient>();
         services.AddSingleton<QueryVectorCache>();
         services.AddSingleton<QueryNormalizer>();
-        services.AddSingleton<ICorpusSourceAdapter, NwtEpubCorpusAdapter>();
+        services.AddHttpClient<ICorpusSourceAdapter, NwtEpubCorpusAdapter>();
         services.AddSingleton<IChunkingPipeline, InMemoryChunkingPipeline>();
         services.AddSingleton<ICoverageAuditor, CoverageAuditor>();
         return services;
     }
-}
-
-public sealed class NwtEpubCorpusAdapter : ICorpusSourceAdapter
-{
-    public Task<IReadOnlyList<SourceArtifact>> DiscoverAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<SourceArtifact>>([]);
-    public Task<SourceFetchResult> FetchAsync(SourceArtifact artifact, long offset, CancellationToken cancellationToken) => throw new NotSupportedException("EPUB fetching is implemented in Phase 2.");
-    public Task<ParseResult> ParseAsync(SourceFetchResult source, CancellationToken cancellationToken) => throw new NotSupportedException("EPUB parsing is implemented in Phase 2.");
 }
 
 public sealed class QueryNormalizer
