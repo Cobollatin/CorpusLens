@@ -171,7 +171,7 @@ public sealed class OracleCorpusRepository(Func<DbConnection> connectionFactory)
                 var vectorStrings = batch.Select(e => "[" + string.Join(',', e.Vector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]").ToArray();
                 oracleCommand.Parameters.Add("chunk", OracleDbType.Varchar2, batch.Select(e => e.ChunkId).ToArray(), System.Data.ParameterDirection.Input);
                 oracleCommand.Parameters.Add("model", OracleDbType.Varchar2, batch.Select(_ => modelId).ToArray(), System.Data.ParameterDirection.Input);
-                var vectorParameter = oracleCommand.Parameters.Add("vector", OracleDbType.Varchar2, vectorStrings, System.Data.ParameterDirection.Input);
+                var vectorParameter = oracleCommand.Parameters.Add("vector", OracleDbType.Clob, vectorStrings, System.Data.ParameterDirection.Input);
                 vectorParameter.ArrayBindSize = vectorStrings.Select(s => s.Length).ToArray();
                 oracleCommand.Parameters.Add("tokens", OracleDbType.Int32, batch.Select(e => e.TokenCount).ToArray(), System.Data.ParameterDirection.Input);
                 await command.ExecuteNonQueryAsync(token);
@@ -235,7 +235,11 @@ public sealed class OracleSearchRepository(Func<DbConnection> connectionFactory,
         OracleCorpusRepository.Add(command, "language", request.Language);
         OracleCorpusRepository.Add(command, "edition", request.Edition is null ? DBNull.Value : request.Edition);
         OracleCorpusRepository.Add(command, "query", EscapeTextQuery(request.Query));
-        if (queryVector is not null) OracleCorpusRepository.Add(command, "vector", "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]");
+        if (queryVector is not null)
+        {
+            var serialized = "[" + string.Join(',', queryVector.Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture))) + "]";
+            ((OracleCommand)command).Parameters.Add("vector", OracleDbType.Clob).Value = serialized;
+        }
         OracleCorpusRepository.Add(command, "lexical_weight", (options ?? new()).LexicalWeight);
         if (queryVector is not null) OracleCorpusRepository.Add(command, "vector_weight", (options ?? new()).VectorWeight);
         OracleCorpusRepository.Add(command, "layer_boost", (options ?? new()).LayerBoost);

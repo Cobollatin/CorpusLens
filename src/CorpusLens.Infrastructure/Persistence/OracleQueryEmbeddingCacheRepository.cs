@@ -26,7 +26,7 @@ public sealed class OracleQueryEmbeddingCacheRepository(Func<DbConnection> conne
         command.CommandText = "MERGE INTO query_embedding_cache t USING (SELECT :key cache_key FROM DUAL) s ON (t.cache_key=s.cache_key) WHEN MATCHED THEN UPDATE SET embedding=TO_VECTOR(:vector),expires_at=SYSTIMESTAMP+INTERVAL '7' DAY WHEN NOT MATCHED THEN INSERT(cache_key,model_id,language,embedding,expires_at) VALUES(:key,'text-embedding-3-large-1024',:language,TO_VECTOR(:vector),SYSTIMESTAMP+INTERVAL '7' DAY)";
         OracleCorpusRepository.Add(command, "key", key);
         OracleCorpusRepository.Add(command, "language", language);
-        OracleCorpusRepository.Add(command, "vector", JsonSerializer.Serialize(vector));
+        ((OracleCommand)command).Parameters.Add("vector", OracleDbType.Clob).Value = JsonSerializer.Serialize(vector);
         await command.ExecuteNonQueryAsync(token);
     }
 }
