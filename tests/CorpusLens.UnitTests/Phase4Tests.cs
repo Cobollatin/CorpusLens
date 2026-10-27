@@ -36,6 +36,15 @@ public class Phase4Tests
         var result = new PassageDeduplicator().Build(hits, verses, [], "E", new(), null, 10);
         Assert.Single(result); Assert.Equal(2, result[0].Verses.Count); Assert.Equal(17, Assert.Single(result[0].Verses.Where(v => v.IsPrimaryHighlight)).Number);
     }
+    [Fact] public void OverlappingChunksDoNotMultiplyPassageScore()
+    {
+        var id = BibleVerseId.Format(40, 6, 25);
+        var verses = new Dictionary<string, Verse> { [id] = new Verse(40, 6, 25, "Do not be anxious", "Matthew", id) };
+        var hit = new SearchCandidate("a", "SingleVerse", [id], null, null, 1, null);
+        var result = new PassageDeduplicator().Build([hit, hit with { ChunkId = "b" }], verses, [], "E", new(), null, 10);
+        Assert.Single(result);
+        Assert.Equal(ReciprocalRankFusion.Score(hit, new()).Total, result[0].Score, 10);
+    }
     [Fact] public void CacheKeyUsesNormalizationAndLanguage()
     {
         var normalizer = new QueryNormalizer();

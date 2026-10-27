@@ -83,7 +83,8 @@ public sealed class PassageDeduplicator
             var section = pericopes.LastOrDefault(p => p.Book == first.Book && p.Chapter == first.Chapter && p.StartVerse <= first.Number && p.EndVerse >= first.Number)?.Heading;
             var reference = $"{first.BookName} {first.Chapter}:{first.Number}" + (last.Number != first.Number ? $"-{last.Number}" : "");
             var boost = citation is not null && citation.VerseIds.Intersect(all).Any() ? 1.0 : 0;
-            return new SearchResult(reference, first.BookName, first.Chapter, section, scores.Sum(s => s.Total) + boost, scores.Sum(s => s.Dense), scores.Sum(s => s.Lexical), group.Select(g => g.Layer).Distinct().ToArray(), passage);
+            // Overlapping chunks describe the same passage; summing them rewards chunk count over relevance.
+            return new SearchResult(reference, first.BookName, first.Chapter, section, scores.Max(s => s.Total) + boost, scores.Max(s => s.Dense), scores.Max(s => s.Lexical), group.Select(g => g.Layer).Distinct().ToArray(), passage);
         }).OrderByDescending(r => r.Score).Take(limit).ToArray();
     }
 }
