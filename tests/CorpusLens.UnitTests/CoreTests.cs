@@ -33,8 +33,8 @@ public class CoreTests
         var sections = new[] { new Pericope(43, 3, 1, 6, "Teaching"), new Pericope(43, 4, 1, 1, "Travel") };
         var chunks = new InMemoryChunkingPipeline().Build("r", verses, sections);
         Assert.Equal(7, chunks.Count(c => c.Layer == "SingleVerse"));
-        Assert.Equal(7, chunks.Count(c => c.Layer == "SlidingWindow3Step1"));
-        Assert.Equal(4, chunks.Count(c => c.Layer == "SlidingWindow5Step2"));
+        Assert.Equal(5, chunks.Count(c => c.Layer == "SlidingWindow3Step1"));
+        Assert.Equal(3, chunks.Count(c => c.Layer == "SlidingWindow5Step2"));
         Assert.Equal(2, chunks.Count(c => c.Layer == "PericopeSection"));
         Assert.All(chunks, c => Assert.Single(c.Segments.Select(s => s.TextSpanId == "s7" ? 4 : 3).Distinct()));
         var spans = verses.Select(v => new TextSpan(v.SpanId, "n", v.Text, Hashes.Sha256(v.Text), null)).ToArray();

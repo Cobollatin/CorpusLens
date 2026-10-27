@@ -10,6 +10,8 @@ public sealed class InMemoryChunkingPipeline : IChunkingPipeline
         foreach (var group in groups)
         {
             var chapter = group.ToArray();
+            if (chapter.Select(v => v.SpanId).Distinct().Count() != chapter.Length || chapter.Select(v => v.Number).Distinct().Count() != chapter.Length)
+                throw new InvalidDataException($"Duplicate verse in chapter {group.Key.Book}:{group.Key.Chapter}.");
             foreach (var verse in chapter) Add("SingleVerse", [verse], "");
             Windows("SlidingWindow3Step1", 3, 1);
             Windows("SlidingWindow5Step2", 5, 2);
@@ -20,8 +22,14 @@ public sealed class InMemoryChunkingPipeline : IChunkingPipeline
             }
             void Windows(string layer, int width, int step)
             {
-                for (var i = 0; i < chapter.Length; i += step)
-                    Add(layer, chapter.Skip(i).Take(width).ToArray(), "");
+                var length = Math.Min(width, chapter.Length);
+                if (length == 0) return;
+                if (chapter.Length <= width) { Add(layer, chapter, ""); return; }
+                var lastStart = chapter.Length - width;
+                var previous = -1;
+                for (var i = 0; i <= lastStart; i += step)
+                { Add(layer, chapter[i..(i + width)], ""); previous = i; }
+                if (previous != lastStart) Add(layer, chapter[lastStart..], "");
             }
         }
         return result;

@@ -1,5 +1,7 @@
 # CorpusLens
 
+Phase 3 offline indexing and Oracle schema notes: [docs/PHASE3.md](docs/PHASE3.md).
+
 CorpusLens is a source-neutral multilingual corpus search system. Phase 2 extracts and audits official English and Spanish NWT EPUBs. The locked baseline is Angular, ASP.NET Core, Oracle ADB 23ai, and OpenAI `text-embedding-3-large` at 1,024 dimensions. See [architecture](docs/ARCHITECTURE.md).
 
 ## Local checks

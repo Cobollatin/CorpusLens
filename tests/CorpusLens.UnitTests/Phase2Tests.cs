@@ -68,7 +68,7 @@ public class Phase2Tests
         var verses = Enumerable.Range(1, 6).Select(n => new Verse(1, 1, n, $"Verse {n}", "Genesis", BibleVerseId.Format(1, 1, n)))
             .Append(new Verse(1, 2, 1, "Next", "Genesis", BibleVerseId.Format(1, 2, 1))).ToArray();
         var chunks = new InMemoryChunkingPipeline().Build("r", verses, [new Pericope(1, 1, 1, 6, "First"), new Pericope(1, 2, 1, 1, "Second")]);
-        Assert.Equal(4, chunks.Count(c => c.Layer == "SlidingWindow5Step2"));
+        Assert.Equal(3, chunks.Count(c => c.Layer == "SlidingWindow5Step2"));
         Assert.All(chunks, c => Assert.Single(c.Segments.Select(s => s.TextSpanId[..5]).Distinct()));
         var spans = verses.Select(v => new TextSpan(v.SpanId, v.SpanId, v.Text, Hashes.Sha256(v.Text), null)).ToArray();
         Assert.True(new CoverageAuditor().Audit("r", spans, chunks).Passed);

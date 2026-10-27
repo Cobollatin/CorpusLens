@@ -2,6 +2,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\CorpusLens.Core\CorpusLens.Core.csproj" />
+    <EmbeddedResource Include="Persistence\Migrations\*.sql" />
   </ItemGroup>
 
   <ItemGroup>
@@ -10,6 +11,7 @@
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
     <PackageReference Include="Oracle.EntityFrameworkCore" Version="8.23.80" />
   </ItemGroup>
 

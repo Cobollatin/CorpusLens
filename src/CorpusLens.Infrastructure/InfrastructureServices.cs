@@ -6,6 +6,9 @@ using CorpusLens.Core;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using CorpusLens.Infrastructure.Persistence;
+using Oracle.ManagedDataAccess.Client;
+using System.Data.Common;
 
 namespace CorpusLens.Infrastructure;
 
@@ -13,11 +16,25 @@ public static class InfrastructureServices
 {
     public static IServiceCollection AddCorpusInfrastructure(this IServiceCollection services, IConfiguration config)
     {
-        var connection = config.GetConnectionString("Oracle");
+        var connection = config.GetConnectionString("Oracle") ?? Environment.GetEnvironmentVariable("CORPUSLENS_ORACLE_CONNECTION_STRING");
         if (!string.IsNullOrWhiteSpace(connection))
+        {
+            var options = OracleDatabaseOptions.FromConfiguration(config);
             services.AddDbContext<CorpusDbContext>(o => o.UseOracle(connection));
+            services.AddSingleton(options);
+            services.AddSingleton<Func<DbConnection>>(() => new OracleConnection(options.ConnectionString));
+            services.AddSingleton<OracleCorpusRepository>();
+            services.AddSingleton<ISearchRepository, OracleSearchRepository>();
+            services.AddSingleton<IRevisionStore, OracleRevisionStore>();
+            services.AddSingleton<RevisionSwitchoverService>();
+            services.AddSingleton<IKeepAliveProbe, OracleKeepAliveProbe>();
+            services.AddSingleton(sp => new OracleKeepAliveHostedService(
+                sp.GetRequiredService<IKeepAliveProbe>(),
+                sp.GetRequiredService<Microsoft.Extensions.Logging.ILogger<OracleKeepAliveHostedService>>())
+            { Interval = TimeSpan.FromHours(Math.Max(1, config.GetValue("Oracle:KeepAliveHours", 24))) });
+            services.AddHostedService(sp => sp.GetRequiredService<OracleKeepAliveHostedService>());
+        }
         services.AddHttpClient<OpenAiEmbeddingClient>();
-        services.AddHttpClient<IEmbeddingBatchClient, OpenAiEmbeddingClient>();
         services.AddSingleton<QueryVectorCache>();
         services.AddSingleton<QueryNormalizer>();
         services.AddHttpClient<ICorpusSourceAdapter, NwtEpubCorpusAdapter>();
@@ -71,45 +88,10 @@ public sealed class QueryVectorCache
     }
 }
 
-public sealed class OpenAiEmbeddingClient(HttpClient http, IConfiguration config) : IEmbeddingBatchClient
+public sealed class OpenAiEmbeddingClient(HttpClient http, IConfiguration config)
 {
     public const string Model = "text-embedding-3-large";
     public const int Dimensions = 1024;
-    public string BuildBatchJsonl(IReadOnlyList<SearchChunk> chunks) => string.Join("\n", chunks.Select(c => JsonSerializer.Serialize(new
-    {
-        custom_id = c.Id, method = "POST", url = "/v1/embeddings",
-        body = new { model = Model, dimensions = Dimensions, input = c.EmbeddingInput }
-    }))) + (chunks.Count > 0 ? "\n" : "");
-
-    public async Task<string> SubmitAsync(IReadOnlyList<SearchChunk> chunks, CancellationToken cancellationToken)
-    {
-        if (chunks.Count == 0) throw new ArgumentException("Batch must contain chunks.");
-        using var upload = NewRequest(HttpMethod.Post, "https://api.openai.com/v1/files");
-        using var form = new MultipartFormDataContent();
-        form.Add(new StringContent("batch"), "purpose");
-        form.Add(new ByteArrayContent(Encoding.UTF8.GetBytes(BuildBatchJsonl(chunks))), "file", "embeddings.jsonl");
-        upload.Content = form;
-        using var fileResponse = await http.SendAsync(upload, cancellationToken);
-        fileResponse.EnsureSuccessStatusCode();
-        using var fileJson = JsonDocument.Parse(await fileResponse.Content.ReadAsStringAsync(cancellationToken));
-        var fileId = fileJson.RootElement.GetProperty("id").GetString();
-        using var batch = NewRequest(HttpMethod.Post, "https://api.openai.com/v1/batches");
-        batch.Content = new StringContent(JsonSerializer.Serialize(new { input_file_id = fileId, endpoint = "/v1/embeddings", completion_window = "24h" }), Encoding.UTF8, "application/json");
-        using var batchResponse = await http.SendAsync(batch, cancellationToken);
-        batchResponse.EnsureSuccessStatusCode();
-        using var batchJson = JsonDocument.Parse(await batchResponse.Content.ReadAsStringAsync(cancellationToken));
-        return batchJson.RootElement.GetProperty("id").GetString()!;
-    }
-
-    public async Task<string> PollAsync(string batchId, CancellationToken cancellationToken)
-    {
-        using var request = NewRequest(HttpMethod.Get, $"https://api.openai.com/v1/batches/{Uri.EscapeDataString(batchId)}");
-        using var response = await http.SendAsync(request, cancellationToken);
-        response.EnsureSuccessStatusCode();
-        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync(cancellationToken));
-        return json.RootElement.GetProperty("status").GetString()!;
-    }
-
     private HttpRequestMessage NewRequest(HttpMethod method, string uri)
     {
         var key = config["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI:ApiKey is required at runtime.");

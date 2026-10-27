@@ -68,7 +68,8 @@ public sealed class NwtEpubCorpusAdapter : ICorpusSourceAdapter
         if (artifact.Sha256.Length > 0 && !sha.Equals(artifact.Sha256, StringComparison.OrdinalIgnoreCase)) throw new InvalidDataException("EPUB SHA-256 mismatch.");
         var stream = File.OpenRead(path);
         stream.Position = offset;
-        return new SourceFetchResult(stream, artifact with { Sha256 = sha });
+        var provenance = File.Exists(path + ".source") ? File.ReadAllText(path + ".source").Trim() : artifact.Uri;
+        return new SourceFetchResult(stream, artifact with { Uri = provenance, Sha256 = sha });
     }
 
     public Task<ParseResult> ParseAsync(SourceFetchResult source, CancellationToken cancellationToken)

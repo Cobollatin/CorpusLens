@@ -7,11 +7,12 @@ public static class CorpusVersions
 {
     public const string Identity = "bible-bbcccvvv-v1";
     public const string Normalization = "unicode-whitespace-case-v1";
-    public const string Chunking = "four-layers-v1";
+    public const string Chunking = "four-layers-v2-full-windows";
 }
 
 public record CorpusSource(string Id, string Name, string Language, string Edition, string? RightsAssessment);
-public record SourceRevision(string Id, string SourceId, string ArtifactSha256, string ParserVersion, string NormalizationVersion, bool IsActive = false);
+public enum RevisionStatus { Staging, Audited, Indexing, Ready, Active, Quarantined, Superseded }
+public record SourceRevision(string Id, string SourceId, string ArtifactSha256, string ParserVersion, string NormalizationVersion, RevisionStatus Status = RevisionStatus.Staging);
 public record Document(string Id, string RevisionId, string NativeId, string Title, string Language);
 public record DocumentNode(string Id, string DocumentId, string? ParentId, string Kind, string NativeId, string? AttributesJson);
 public record TextSpan(string Id, string NodeId, string Text, string Sha256, string? SourceLocator);
@@ -81,7 +82,6 @@ public interface ICorpusSourceAdapter
 }
 public interface IChunkingPipeline { IReadOnlyList<SearchChunk> Build(string revisionId, IReadOnlyList<Verse> verses, IReadOnlyList<Pericope> pericopes); }
 public interface ICoverageAuditor { CoverageAuditReport Audit(string revisionId, IReadOnlyList<TextSpan> spans, IReadOnlyList<SearchChunk> chunks); }
-public interface IEmbeddingBatchClient { Task<string> SubmitAsync(IReadOnlyList<SearchChunk> chunks, CancellationToken cancellationToken); Task<string> PollAsync(string batchId, CancellationToken cancellationToken); }
 public record SearchRequest(string Query, string Language, string? Edition, int Limit = 10);
 public record SearchHit(string ChunkId, string Text, double Score, IReadOnlyList<string> VerseIds);
 public interface ISearchRepository { Task<IReadOnlyList<SearchHit>> SearchAsync(SearchRequest request, float[]? queryVector, CancellationToken cancellationToken); }

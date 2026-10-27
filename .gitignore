@@ -5,6 +5,7 @@
 .ralph/
 data/raw/
 data/snapshots/
+data/batch/
 .env*
 *.secret*
 *secrets*.json
@@ -18,3 +19,4 @@ cwallet.sso
 ewallet.p12
 tnsnames.ora
 sqlnet.ora
+*.jsonl
